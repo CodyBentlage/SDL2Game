@@ -134,7 +134,7 @@ static void initPlayer()
 	stage.fighterTail->next = player;
 	stage.fighterTail = player;
 
-	player->health = 1;
+	player->health = 100;
 	player->x = 100;
 	player->y = 100;
 	player->texture = playerTexture;
@@ -397,29 +397,44 @@ static void doEnemies(void)
 
 static void fireAlienBullet(Entity *e)
 {
-	Entity *bullet;
+    Entity *bullet;
 
-	bullet = malloc(sizeof(Entity));
-	memset(bullet, 0, sizeof(Entity));
-	stage.bulletTail->next = bullet;
-	stage.bulletTail = bullet;
+    bullet = malloc(sizeof(Entity));
+    memset(bullet, 0, sizeof(Entity));
+    stage.bulletTail->next = bullet;
+    stage.bulletTail = bullet;
 
-	bullet->x = e->x;
-	bullet->y = e->y;
-	bullet->health = 1;
-	bullet->texture = alienBulletTexture;
-	bullet->side = SIDE_ALIEN;
-	SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
+    bullet->x = e->x;
+    bullet->y = e->y;
+    bullet->health = 1;
+    bullet->texture = alienBulletTexture;
+    bullet->side = SIDE_ALIEN;
+    SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
 
-	bullet->x += (e->w / 2) - (bullet->w / 2);
-	bullet->y += (e->h / 2) - (bullet->h / 2);
+    bullet->x += (e->w / 2) - (bullet->w / 2);
+    bullet->y += (e->h / 2) - (bullet->h / 2);
 
-	calcSlope(player->x + (player->w / 2), player->y + (player->h / 2), e->x, e->y, &bullet->dx, &bullet->dy);
+    // Calculate the slope
+    calcSlope(player->x + (player->w / 2), player->y + (player->h / 2), e->x, e->y, &bullet->dx, &bullet->dy);
 
-	bullet->dx *= ALIEN_BULLET_SPEED;
-	bullet->dy *= ALIEN_BULLET_SPEED;
+    bullet->dx *= ALIEN_BULLET_SPEED;
+    bullet->dy *= ALIEN_BULLET_SPEED;
 
-	e->reload = (rand() % FPS * 2);
+    // Calculate angle in radians and adjust it by π to flip the direction
+    e->angle = atan2(bullet->dy, bullet->dx) + M_PI;
+
+    e->reload = (rand() % FPS * 2);
+}
+
+
+void blitRotated(SDL_Texture *texture, int x, int y, float angle)
+{
+	SDL_Rect dest;
+	dest.x = x;
+	dest.y = y;
+	SDL_QueryTexture(texture, NULL, NULL, &dest.w, &dest.h);
+
+	SDL_RenderCopyEx(app.renderer, texture, NULL, &dest, angle * (180.0 / M_PI), NULL, SDL_FLIP_NONE);
 }
 
 static void doFighters(void)
@@ -456,21 +471,30 @@ static void doFighters(void)
 		}
 
 		else if (player != NULL && e != player && collision(player->x, player->y, player->w, player->h, e->x, e->y, e->w, e->h))
-        {
-            // Player and enemy collided, both should die
-            e->health = 0;
-            player->health = 0;
+		{
+			// Player and enemy collided, both should die
+			e->health = 0;
+			if (player->health > 25)
+			{
+				player->health -= 25;
+				playSound(SND_PLAYER_DIE, CH_PLAYER);
+				if (player->health == 0)
+				{
+					player->health = 25; // Weird logic but the player will die now
+				}
+			}
+			else if (player->health == 0 || player->health <= 25)
+			{
+				player->health = 0;
+				addExplosions(player->x, player->y, 32); // Create explosion at player's position
+				addDebris(player);						 // Add debris for player
+				playSound(SND_PLAYER_DIE, CH_PLAYER);	 // Play player death sound
+			}
 
-            addExplosions(player->x, player->y, 32); // Create explosion at player's position
+			addExplosions(e->x, e->y, 32); // Create explosion at enemy's position
 
-            addExplosions(e->x, e->y, 32); // Create explosion at enemy's position
-
-            addDebris(player); // Add debris for player
-
-            addDebris(e); // Add debris for enemy
-
-            playSound(SND_PLAYER_DIE, CH_PLAYER); // Play player death sound
-        }
+			addDebris(e); // Add debris for enemy
+		}
 
 		prev = e;
 	}
@@ -514,15 +538,20 @@ static int bulletHitFighter(Entity *b)
 		if (e->side != b->side && collision(b->x, b->y, b->w, b->h, e->x, e->y, e->w, e->h))
 		{
 			b->health = 0;
-			e->health = 0;
-
-			addExplosions(e->x, e->y, 32);
-
-			addDebris(e);
+			if (e->health > 5)
+			{
+				e->health -= 5;
+			}
+			else
+			{
+				e->health = 0;
+				addExplosions(e->x, e->y, 32);
+				addDebris(e);
+			}
 
 			if (e == player)
 			{
-				playSound(SND_PLAYER_DIE, CH_PLAYER);
+				playSound(SND_SHIP_HIT, CH_PLAYER);
 			}
 			else
 			{
@@ -866,7 +895,7 @@ static void drawFighters(void)
 	{
 		if (e->side == SIDE_ALIEN) // Draw only aliens (not the player)
 		{
-			blit(e->texture, (int)e->x, (int)e->y); // Cast float x and y to int
+			blitRotated(e->texture, e->x, e->y, e->angle); // Draw enemies with rotation
 		}
 	}
 }
