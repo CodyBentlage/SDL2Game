@@ -37,6 +37,7 @@ static void drawHud(void);
 static void doShotgunPods(void);
 static void drawShotgunPods(void);
 static void addShotgunPod(int x, int y);
+static void toggleBoost(bool activate);
 
 static Entity *player;
 static SDL_Texture *bulletTexture;
@@ -48,8 +49,13 @@ static SDL_Texture *pointsTexture;
 static int enemySpawnTimer;
 static int stageResetTimer;
 static int shotgunEnabled = 0;
+static int shotgunDuration = 0;
+static Uint32 shotgunStartTime = 0;
+static float PLAYER_SPEED = 4;
 
 static float aim_angle = 0.0f;
+
+bool isBoostActive = false;
 
 void initStage(void)
 {
@@ -75,6 +81,10 @@ void initStage(void)
 	enemySpawnTimer = 0;
 
 	stageResetTimer = FPS * 3;
+
+	shotgunDuration = 0;
+
+	PLAYER_SPEED = 4;
 }
 
 static void resetStage(void)
@@ -134,7 +144,10 @@ static void initPlayer()
 	stage.fighterTail->next = player;
 	stage.fighterTail = player;
 
-	player->health = 100;
+	player->maxHealth = 100;
+	player->health = player->maxHealth;
+	player->boostCooldown = 0;
+	player->boostTimer = 0;
 	player->x = 100;
 	player->y = 100;
 	player->texture = playerTexture;
@@ -188,9 +201,26 @@ void doPlayer(void)
 	{
 		player->dx = player->dy = 0;
 
+		// Update player reload
 		if (player->reload > 0)
 		{
 			player->reload--;
+		}
+
+		// Boost logic
+		if (player->boostTimer > 0)
+		{
+			player->boostTimer--;
+
+			if (player->boostTimer <= 0)
+			{
+				toggleBoost(false);			 // Deactivate boost when timer expires
+				player->boostCooldown = 180; // Set cooldown to 3 seconds (180 frames, assuming 60 frames per second)
+			}
+		}
+		else if (player->boostCooldown > 0)
+		{
+			player->boostCooldown--;
 		}
 
 		if (app.controller)
@@ -236,6 +266,14 @@ void doPlayer(void)
 				else
 				{
 					fireBullet(aim_angle);
+				}
+			}
+			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+			{
+				if (player->boostTimer <= 0 && player->boostCooldown <= 0)
+				{
+					playSound(SND_PLAYER_FIRE, CH_PLAYER);
+					toggleBoost(true); // Activate boost
 				}
 			}
 		}
@@ -381,15 +419,20 @@ static void doEnemies(void)
 
 	for (e = stage.fighterHead.next; e != NULL; e = e->next)
 	{
-		if (e != player)
+		if (e != player) // Ensure the player's position isn't messed with
 		{
-			e->y = MIN(MAX(e->y, 0), SCREEN_HEIGHT - e->h);
+			// Calculate minimum and maximum y positions
+			int minY = 70;						  // Minimum y position to avoid the top HUD
+			int maxY = SCREEN_HEIGHT - e->h - 20; // Maximum y position to avoid the bottom cutoff
 
+			// Restrict vertical movement within screen bounds
+			e->y = MIN(MAX(e->y, minY), maxY);
+
+			// Fire bullets
 			if (player != NULL && --e->reload <= 0)
 			{
-				fireAlienBullet(e);
-
-				playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE);
+				fireAlienBullet(e);						  // Example function to fire bullets
+				playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
 			}
 		}
 	}
@@ -397,35 +440,34 @@ static void doEnemies(void)
 
 static void fireAlienBullet(Entity *e)
 {
-    Entity *bullet;
+	Entity *bullet;
 
-    bullet = malloc(sizeof(Entity));
-    memset(bullet, 0, sizeof(Entity));
-    stage.bulletTail->next = bullet;
-    stage.bulletTail = bullet;
+	bullet = malloc(sizeof(Entity));
+	memset(bullet, 0, sizeof(Entity));
+	stage.bulletTail->next = bullet;
+	stage.bulletTail = bullet;
 
-    bullet->x = e->x;
-    bullet->y = e->y;
-    bullet->health = 1;
-    bullet->texture = alienBulletTexture;
-    bullet->side = SIDE_ALIEN;
-    SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
+	bullet->x = e->x;
+	bullet->y = e->y;
+	bullet->health = 1;
+	bullet->texture = alienBulletTexture;
+	bullet->side = SIDE_ALIEN;
+	SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
 
-    bullet->x += (e->w / 2) - (bullet->w / 2);
-    bullet->y += (e->h / 2) - (bullet->h / 2);
+	bullet->x += (e->w / 2) - (bullet->w / 2);
+	bullet->y += (e->h / 2) - (bullet->h / 2);
 
-    // Calculate the slope
-    calcSlope(player->x + (player->w / 2), player->y + (player->h / 2), e->x, e->y, &bullet->dx, &bullet->dy);
+	// Calculate the slope
+	calcSlope(player->x + (player->w / 2), player->y + (player->h / 2), e->x, e->y, &bullet->dx, &bullet->dy);
 
-    bullet->dx *= ALIEN_BULLET_SPEED;
-    bullet->dy *= ALIEN_BULLET_SPEED;
+	bullet->dx *= ALIEN_BULLET_SPEED;
+	bullet->dy *= ALIEN_BULLET_SPEED;
 
-    // Calculate angle in radians and adjust it by π to flip the direction
-    e->angle = atan2(bullet->dy, bullet->dx) + M_PI;
+	// Calculate angle in radians and adjust it by π to flip the direction
+	e->angle = atan2(bullet->dy, bullet->dx) + M_PI;
 
-    e->reload = (rand() % FPS * 2);
+	e->reload = (rand() % FPS * 2);
 }
-
 
 void blitRotated(SDL_Texture *texture, int x, int y, float angle)
 {
@@ -547,20 +589,28 @@ static int bulletHitFighter(Entity *b)
 				e->health = 0;
 				addExplosions(e->x, e->y, 32);
 				addDebris(e);
+				if (e == player)
+				{
+					playSound(SND_PLAYER_DIE, CH_PLAYER);
+				}
+				else
+				{
+					if (rand() % 20 == 0)
+					{
+						addShotgunPod(e->x + e->w / 2, e->y + e->h / 2);
+					}
+					stage.score++;
+					playSound(SND_ALIEN_DIE, CH_ANY);
+				}
 			}
 
 			if (e == player)
 			{
 				playSound(SND_SHIP_HIT, CH_PLAYER);
 			}
-			else
+			else if (e != player)
 			{
-				if (rand() % 20 == 0)
-				{
-					addShotgunPod(e->x + e->w / 2, e->y + e->h / 2);
-				}
-				stage.score++;
-				playSound(SND_ALIEN_DIE, CH_ANY);
+				playSound(SND_SHIP_HIT, CH_PLAYER);
 			}
 
 			return 1;
@@ -582,7 +632,7 @@ static void spawnEnemies(void)
 		stage.fighterTail = enemy;
 
 		enemy->x = SCREEN_WIDTH;
-		enemy->y = rand() % SCREEN_HEIGHT;
+		enemy->y = rand() % (SCREEN_HEIGHT - 70); // Ensure enemy spawns below the HUD area
 		enemy->texture = enemyTexture;
 		SDL_QueryTexture(enemy->texture, NULL, NULL, &enemy->w, &enemy->h);
 
@@ -591,7 +641,8 @@ static void spawnEnemies(void)
 		enemy->dy /= 100;
 
 		enemy->side = SIDE_ALIEN;
-		enemy->health = 1;
+		enemy->maxHealth = 50;
+		enemy->health = 50;
 
 		enemy->reload = FPS * (1 + (rand() % 3));
 
@@ -608,9 +659,9 @@ static void clipPlayer(void)
 			player->x = 0;
 		}
 
-		if (player->y < 0)
+		if (player->y < 70)
 		{
-			player->y = 0;
+			player->y = 70;
 		}
 
 		if (player->x > SCREEN_WIDTH - player->w)
@@ -684,11 +735,23 @@ static void doDebris(void)
 static void doShotgunPods(void)
 {
 	Entity *e, *prev;
+	Uint32 currentTime;
+
+	// Get current time in milliseconds
+	currentTime = SDL_GetTicks();
+
+	// Check if shotgun ability should be disabled due to time limit
+	if (shotgunEnabled && (currentTime - shotgunStartTime >= shotgunDuration * 1000)) // Convert seconds to milliseconds
+	{
+		shotgunEnabled = 0;
+		// Optionally perform cleanup or notify the player that shotgun ability expired
+	}
 
 	prev = &stage.shotgunHead;
 
 	for (e = stage.shotgunHead.next; e != NULL; e = e->next)
 	{
+		// Check if entity is out of bounds and adjust direction
 		if (e->x < 0)
 		{
 			e->x = 0;
@@ -713,18 +776,23 @@ static void doShotgunPods(void)
 			e->dy = -e->dy;
 		}
 
+		// Move entity
 		e->x += e->dx;
 		e->y += e->dy;
 
+		// Example collision logic that enables shotgun ability
 		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 		{
 			e->health = 0;
 
 			shotgunEnabled = 1;
+			shotgunStartTime = SDL_GetTicks();
+			shotgunDuration += 10;
 
 			playSound(SND_POINTS, CH_POINTS);
 		}
 
+		// Check entity health and remove if necessary
 		if (--e->health <= 0)
 		{
 			if (e == stage.pointsTail)
@@ -948,8 +1016,10 @@ static void drawExplosions(void)
 
 static void drawHud(void)
 {
-	drawText(10, 10, 255, 255, 255, TEXT_LEFT, "SCORE: %03d", stage.score);
+	// Draw the score
+	drawText(SCREEN_WIDTH - 10, 40, 255, 255, 255, TEXT_RIGHT, "SCORE: %03d", stage.score);
 
+	// Draw the high score
 	if (stage.score < highscores.highscore[0].score)
 	{
 		drawText(SCREEN_WIDTH - 10, 10, 255, 255, 255, TEXT_RIGHT, "HIGHSCORE: %03d", highscores.highscore[0].score);
@@ -957,5 +1027,124 @@ static void drawHud(void)
 	else
 	{
 		drawText(SCREEN_WIDTH - 10, 10, 0, 255, 0, TEXT_RIGHT, "HIGHSCORE: %03d", stage.score);
+	}
+
+	// Check if player is valid
+	if (player != NULL && player->health > 0)
+	{
+		// Draw the health bar background
+		SDL_Rect healthBarBgRect = {HEALTH_BAR_X, HEALTH_BAR_Y, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT};
+		SDL_SetRenderDrawColor(app.renderer, 40, 40, 40, 255); // Black color
+		SDL_RenderFillRect(app.renderer, &healthBarBgRect);
+
+		// Draw the current health bar
+		float healthPercentage = (float)player->health / player->maxHealth;
+		int healthBarWidth = (int)(HEALTH_BAR_WIDTH * healthPercentage);
+
+		SDL_Rect healthBarRect = {HEALTH_BAR_X, HEALTH_BAR_Y, healthBarWidth, HEALTH_BAR_HEIGHT};
+		SDL_SetRenderDrawColor(app.renderer, 0, 255, 0, 255); // Green color for health bar
+		SDL_RenderFillRect(app.renderer, &healthBarRect);
+
+		// Draw enemy health bars
+		Entity *enemy;
+		for (enemy = stage.fighterHead.next; enemy != NULL; enemy = enemy->next)
+		{
+			if (enemy != player) // Only draw the health bar for enemies
+			{
+				// Calculate health percentage
+				float enemyHealthPercentage = (float)enemy->health / enemy->maxHealth;
+
+				// Calculate width of health bar based on percentage
+				int enemyHealthBarWidth = (int)(enemy->w * enemyHealthPercentage);
+				int initialHealthBarWidth = (int)(enemy->w * (float)50 / enemy->maxHealth);
+
+				// Calculate position below the enemy sprite
+				int enemyHealthBarX = enemy->x + (enemy->w - initialHealthBarWidth) / 2; // Center health bar horizontally under the enemy
+				int enemyHealthBarY = enemy->y + enemy->h + 5;							 // Adjust vertically below the enemy sprite, e.g., 5 pixels down
+
+				// Draw grey background for health bar
+				SDL_Rect enemyHealthBarBgRect = {enemyHealthBarX, enemyHealthBarY, enemy->w, 4}; // Adjust height and position as needed
+				SDL_SetRenderDrawColor(app.renderer, 40, 40, 40, 255);							 // Dark grey color for background
+				SDL_RenderFillRect(app.renderer, &enemyHealthBarBgRect);
+
+				// Draw health bar based on current health
+				SDL_Rect enemyHealthBarRect = {enemyHealthBarX, enemyHealthBarY, enemyHealthBarWidth, 4}; // Adjust height and position as needed
+				SDL_SetRenderDrawColor(app.renderer, 255, 0, 0, 255);									  // Red color for health bar
+				SDL_RenderFillRect(app.renderer, &enemyHealthBarRect);
+			}
+		}
+
+		// Calculate remaining time percentage for shotgun ability (if needed)
+		Uint32 currentTime = SDL_GetTicks();
+		Uint32 elapsedTime = currentTime - shotgunStartTime;
+		float remainingTimePercentage = 1.0f - (float)elapsedTime / (shotgunDuration * 1000); // Convert to seconds
+
+		// Clamp the percentage to [0, 1] range
+		if (remainingTimePercentage < 0)
+			remainingTimePercentage = 0;
+		else if (remainingTimePercentage > 1)
+			remainingTimePercentage = 1;
+
+		// Draw the timer bar for shotgun ability
+		int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
+		SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
+		SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
+		SDL_RenderFillRect(app.renderer, &timerBarRect);
+
+		// Calculate boost availability percentage
+		float boostPercentage = (float)player->boostTimer / 120.0f; // Assuming boost lasts 2 seconds (120 frames)
+
+		// Clamp the boost percentage to [0, 1] range
+		if (boostPercentage < 0)
+			boostPercentage = 0;
+		else if (boostPercentage > 1)
+			boostPercentage = 1;
+
+		// Draw the boost bar background
+		SDL_Rect boostBarBgRect = {BOOST_BAR_X, BOOST_BAR_Y, BOOST_BAR_WIDTH, BOOST_BAR_HEIGHT};
+		SDL_SetRenderDrawColor(app.renderer, 40, 40, 40, 255); // Dark grey background
+		SDL_RenderFillRect(app.renderer, &boostBarBgRect);
+
+		bool boostAvailable = (player->boostTimer <= 0 && player->boostCooldown <= 0);
+		if (boostAvailable)
+		{
+			// Boost is active, draw yellow bar
+			SDL_Rect boostBarRect = {BOOST_BAR_X, BOOST_BAR_Y, BOOST_BAR_WIDTH, BOOST_BAR_HEIGHT};
+			SDL_SetRenderDrawColor(app.renderer, 255, 255, 0, 255); // Yellow color for boost bar
+			SDL_RenderFillRect(app.renderer, &boostBarRect);
+		}
+		else if (player->boostTimer > 0)
+		{
+			// Boost is active, draw yellow bar
+			int boostBarWidth = (int)(BOOST_BAR_WIDTH * boostPercentage);
+			SDL_Rect boostBarRect = {BOOST_BAR_X, BOOST_BAR_Y, boostBarWidth, BOOST_BAR_HEIGHT};
+			SDL_SetRenderDrawColor(app.renderer, 255, 255, 0, 255); // Yellow color for boost bar
+			SDL_RenderFillRect(app.renderer, &boostBarRect);
+		}
+		else if (player->boostCooldown > 0)
+		{
+			// Boost is on cooldown, draw grey bar with charging effect
+			float cooldownPercentage = 1.0f - ((float)player->boostCooldown / 180.0f); // Cooldown is 3 seconds (180 frames)
+			int cooldownBarWidth = (int)(BOOST_BAR_WIDTH * cooldownPercentage);
+			SDL_Rect cooldownBarRect = {BOOST_BAR_X, BOOST_BAR_Y, cooldownBarWidth, BOOST_BAR_HEIGHT};
+			SDL_SetRenderDrawColor(app.renderer, 128, 128, 128, 255); // Light grey color for cooldown bar
+			SDL_RenderFillRect(app.renderer, &cooldownBarRect);
+		}
+	}
+}
+
+static void toggleBoost(bool activate)
+{
+	if (activate)
+	{
+		if (player->boostCooldown <= 0) // Check if boost is not on cooldown
+		{
+			player->boostTimer = 120; // Set boost timer to 2 seconds (assuming 60 frames per second)
+			PLAYER_SPEED += 7;		  // Increment player speed for boost
+		}
+	}
+	else
+	{
+		PLAYER_SPEED = 4; // Reset player speed to base speed
 	}
 }

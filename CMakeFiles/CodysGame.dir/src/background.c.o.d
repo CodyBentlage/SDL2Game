@@ -182,5 +182,6 @@ CMakeFiles/CodysGame.dir/src/background.c.o: \
  /usr/include/SDL2/SDL_timer.h /usr/include/SDL2/SDL_version.h \
  /usr/include/SDL2/SDL_locale.h /usr/include/SDL2/SDL_misc.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h

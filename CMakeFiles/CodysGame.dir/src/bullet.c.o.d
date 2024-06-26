@@ -1,5 +1,5 @@
-CMakeFiles/CodysGame.dir/src/util.c.o: \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/util.c \
+CMakeFiles/CodysGame.dir/src/bullet.c.o: \
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/bullet.c \
  /usr/include/stdc-predef.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
  /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_stdinc.h \
@@ -182,5 +182,4 @@ CMakeFiles/CodysGame.dir/src/util.c.o: \
  /usr/include/SDL2/SDL_timer.h /usr/include/SDL2/SDL_version.h \
  /usr/include/SDL2/SDL_locale.h /usr/include/SDL2/SDL_misc.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/util.h
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/stage.h

@@ -183,4 +183,5 @@ CMakeFiles/CodysGame.dir/src/draw.c.o: \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h \
  /usr/include/SDL2/SDL.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h

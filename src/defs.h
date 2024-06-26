@@ -13,7 +13,6 @@
 
 #define FPS 60
 
-#define PLAYER_SPEED 4
 #define PLAYER_BULLET_SPEED 20
 #define ALIEN_BULLET_SPEED 8
 
@@ -35,6 +34,21 @@
 
 #define M_PI 3.14159265358979323846
 #define JOYSTICK_DEAD_ZONE 8000
+
+#define HEALTH_BAR_WIDTH 200 // Health bar
+#define HEALTH_BAR_HEIGHT 5
+#define HEALTH_BAR_X 10
+#define HEALTH_BAR_Y 10
+
+#define BOOST_BAR_X 10 // For the boost bar
+#define BOOST_BAR_Y 20
+#define BOOST_BAR_WIDTH 170
+#define BOOST_BAR_HEIGHT 5
+
+#define ABILITY_BAR_X 10 // For the shotgun ability
+#define ABILITY_BAR_Y 30
+#define ABILITY_BAR_WIDTH 100
+#define ABILITY_BAR_HEIGHT 5
 
 enum
 {

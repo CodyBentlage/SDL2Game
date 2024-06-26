@@ -220,6 +220,7 @@ CMakeFiles/CodysGame.dir/src/background.c.o: src/background.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/background.h \
   src/draw.h
 
@@ -444,6 +445,7 @@ CMakeFiles/CodysGame.dir/src/draw.c.o: src/draw.c \
   src/defs.h \
   /usr/include/SDL2/SDL.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/draw.h
 
 CMakeFiles/CodysGame.dir/src/highscores.c.o: src/highscores.c \
@@ -665,6 +667,7 @@ CMakeFiles/CodysGame.dir/src/highscores.c.o: src/highscores.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/background.h \
   src/highscores.h \
   src/stage.h \
@@ -893,6 +896,7 @@ CMakeFiles/CodysGame.dir/src/init.c.o: src/init.c \
   src/defs.h \
   /usr/include/SDL2/SDL.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/background.h \
   src/highscores.h \
   src/init.h \
@@ -1118,6 +1122,7 @@ CMakeFiles/CodysGame.dir/src/input.c.o: src/input.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/input.h
 
 CMakeFiles/CodysGame.dir/src/main.c.o: src/main.c \
@@ -1339,11 +1344,13 @@ CMakeFiles/CodysGame.dir/src/main.c.o: src/main.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/draw.h \
   src/init.h \
   src/input.h \
   src/main.h \
-  src/title.h
+  src/title.h \
+  src/background.h
 
 CMakeFiles/CodysGame.dir/src/sound.c.o: src/sound.c \
   /usr/include/stdc-predef.h \
@@ -1565,6 +1572,7 @@ CMakeFiles/CodysGame.dir/src/sound.c.o: src/sound.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/sound.h
 
 CMakeFiles/CodysGame.dir/src/stage.c.o: src/stage.c \
@@ -1786,6 +1794,7 @@ CMakeFiles/CodysGame.dir/src/stage.c.o: src/stage.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/background.h \
   src/draw.h \
   src/highscores.h \
@@ -2013,6 +2022,7 @@ CMakeFiles/CodysGame.dir/src/text.c.o: src/text.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/draw.h \
   src/text.h
 
@@ -2235,6 +2245,7 @@ CMakeFiles/CodysGame.dir/src/title.c.o: src/title.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/background.h \
   src/draw.h \
   src/highscores.h \
@@ -2461,6 +2472,7 @@ CMakeFiles/CodysGame.dir/src/util.c.o: src/util.c \
   /usr/include/SDL2/SDL_locale.h \
   /usr/include/SDL2/SDL_misc.h \
   src/structs.h \
+  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
   src/util.h
 
 
@@ -2503,6 +2515,8 @@ src/structs.h:
 /usr/include/SDL2/SDL_metal.h:
 
 /usr/include/SDL2/SDL_messagebox.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
 /usr/include/SDL2/SDL_log.h:
 

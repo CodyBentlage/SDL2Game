@@ -221,6 +221,7 @@ CMakeFiles/CodysGame.dir/src/background.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
 
@@ -446,6 +447,7 @@ CMakeFiles/CodysGame.dir/src/draw.c.o
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h
  /usr/include/SDL2/SDL.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
 
 CMakeFiles/CodysGame.dir/src/highscores.c.o
@@ -668,6 +670,7 @@ CMakeFiles/CodysGame.dir/src/highscores.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/highscores.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/stage.h
@@ -897,6 +900,7 @@ CMakeFiles/CodysGame.dir/src/init.c.o
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h
  /usr/include/SDL2/SDL.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/highscores.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/init.h
@@ -1123,6 +1127,7 @@ CMakeFiles/CodysGame.dir/src/input.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/input.h
 
 CMakeFiles/CodysGame.dir/src/main.c.o
@@ -1345,11 +1350,13 @@ CMakeFiles/CodysGame.dir/src/main.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/init.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/input.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/main.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/title.h
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h
 
 CMakeFiles/CodysGame.dir/src/sound.c.o
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/sound.c
@@ -1572,6 +1579,7 @@ CMakeFiles/CodysGame.dir/src/sound.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/sound.h
 
 CMakeFiles/CodysGame.dir/src/stage.c.o
@@ -1794,6 +1802,7 @@ CMakeFiles/CodysGame.dir/src/stage.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/highscores.h
@@ -2022,6 +2031,7 @@ CMakeFiles/CodysGame.dir/src/text.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/text.h
 
@@ -2245,6 +2255,7 @@ CMakeFiles/CodysGame.dir/src/title.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/highscores.h
@@ -2472,5 +2483,6 @@ CMakeFiles/CodysGame.dir/src/util.c.o
  /usr/include/SDL2/SDL_locale.h
  /usr/include/SDL2/SDL_misc.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/util.h
 
