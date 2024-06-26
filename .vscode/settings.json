@@ -2,6 +2,8 @@
     "files.associations": {
         "init.h": "c",
         "text.h": "c",
-        "title.h": "c"
+        "title.h": "c",
+        "math.h": "c",
+        "main.h": "c"
     }
 }

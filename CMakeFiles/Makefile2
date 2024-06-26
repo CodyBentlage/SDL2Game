@@ -63,7 +63,7 @@ CMAKE_BINARY_DIR = /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/CodysGame.dir/all
+all: CMakeFiles/Boomin.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/CodysGame.dir/clean
+clean: CMakeFiles/Boomin.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/CodysGame.dir
+# Target rules for target CMakeFiles/Boomin.dir
 
 # All Build rule for target.
-CMakeFiles/CodysGame.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/CodysGame.dir/build.make CMakeFiles/CodysGame.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/CodysGame.dir/build.make CMakeFiles/CodysGame.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12 "Built target CodysGame"
-.PHONY : CMakeFiles/CodysGame.dir/all
+CMakeFiles/Boomin.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13 "Built target Boomin"
+.PHONY : CMakeFiles/Boomin.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/CodysGame.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles 12
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/CodysGame.dir/all
+CMakeFiles/Boomin.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles 13
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/Boomin.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles 0
-.PHONY : CMakeFiles/CodysGame.dir/rule
+.PHONY : CMakeFiles/Boomin.dir/rule
 
 # Convenience name for target.
-CodysGame: CMakeFiles/CodysGame.dir/rule
-.PHONY : CodysGame
+Boomin: CMakeFiles/Boomin.dir/rule
+.PHONY : Boomin
 
 # clean rule for target.
-CMakeFiles/CodysGame.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/CodysGame.dir/build.make CMakeFiles/CodysGame.dir/clean
-.PHONY : CMakeFiles/CodysGame.dir/clean
+CMakeFiles/Boomin.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/clean
+.PHONY : CMakeFiles/Boomin.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

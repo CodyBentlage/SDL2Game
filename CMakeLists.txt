@@ -1,4 +1,4 @@
-Project (CodysGame)
+Project (Boomin)
 CMake_Minimum_Required (VERSION 3.1)
 
 include(FindPkgConfig)

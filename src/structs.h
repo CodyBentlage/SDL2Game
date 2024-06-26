@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 typedef struct Entity Entity;
 typedef struct Explosion Explosion;
 typedef struct Debris Debris;
@@ -48,6 +50,7 @@ struct Entity
 	Entity *next;
 	float angle;
 	float maxHealth;
+	bool boostActive;
 };
 
 struct Explosion

@@ -14,6 +14,15 @@
 # EXTERNAL cache entries
 ########################
 
+//Value Computed by CMake
+Boomin_BINARY_DIR:STATIC=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game
+
+//Value Computed by CMake
+Boomin_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+Boomin_SOURCE_DIR:STATIC=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game
+
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 
@@ -145,7 +154,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=CodysGame
+CMAKE_PROJECT_NAME:STATIC=Boomin
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/usr/bin/ranlib
@@ -208,15 +217,6 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // during the make.  This is useful for debugging only. With Visual
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
-
-//Value Computed by CMake
-CodysGame_BINARY_DIR:STATIC=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game
-
-//Value Computed by CMake
-CodysGame_IS_TOP_LEVEL:STATIC=ON
-
-//Value Computed by CMake
-CodysGame_SOURCE_DIR:STATIC=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game
 
 //Arguments to supply to pkg-config
 PKG_CONFIG_ARGN:STRING=

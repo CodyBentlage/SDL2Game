@@ -46,6 +46,7 @@ static SDL_Texture *alienBulletTexture;
 static SDL_Texture *playerTexture;
 static SDL_Texture *explosionTexture;
 static SDL_Texture *pointsTexture;
+static SDL_Texture *fireTexture;
 static int enemySpawnTimer;
 static int stageResetTimer;
 static int shotgunEnabled = 0;
@@ -56,6 +57,9 @@ static float PLAYER_SPEED = 4;
 static float aim_angle = 0.0f;
 
 bool isBoostActive = false;
+
+bool shipCollision = false;
+static Uint32 collisionCooldownEndTime = 0;
 
 void initStage(void)
 {
@@ -68,6 +72,7 @@ void initStage(void)
 	playerTexture = loadTexture("gfx/player.png");
 	explosionTexture = loadTexture("gfx/explosion.png");
 	pointsTexture = loadTexture("gfx/points.png");
+	fireTexture = loadTexture("gfx/boosterFire.png");
 
 	memset(app.keyboard, 0, sizeof(int) * MAX_KEYBOARD_KEYS);
 	memset(app.mouse_buttons, 0, sizeof(int) * MAX_MOUSE_BUTTONS);
@@ -144,7 +149,7 @@ static void initPlayer()
 	stage.fighterTail->next = player;
 	stage.fighterTail = player;
 
-	player->maxHealth = 100;
+	player->maxHealth = 1000;
 	player->health = player->maxHealth;
 	player->boostCooldown = 0;
 	player->boostTimer = 0;
@@ -197,9 +202,18 @@ static void logic(void)
 
 void doPlayer(void)
 {
+	if (shipCollision && SDL_GetTicks() >= collisionCooldownEndTime)
+	{
+		// Reset shipCollision to false
+		shipCollision = false;
+	}
+
 	if (player != NULL)
 	{
-		player->dx = player->dy = 0;
+		if (shipCollision == false)
+		{
+			player->dx = player->dy = 0;
+		}
 
 		// Update player reload
 		if (player->reload > 0)
@@ -226,24 +240,27 @@ void doPlayer(void)
 		if (app.controller)
 		{
 			// Handle game controller input
-			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
+			if (shipCollision == false)
 			{
-				player->dy = -PLAYER_SPEED;
-			}
+				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
+				{
+					player->dy = -PLAYER_SPEED;
+				}
 
-			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) > 8000)
-			{
-				player->dy = PLAYER_SPEED;
-			}
+				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) > 8000)
+				{
+					player->dy = PLAYER_SPEED;
+				}
 
-			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) < -8000)
-			{
-				player->dx = -PLAYER_SPEED;
-			}
+				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) < -8000)
+				{
+					player->dx = -PLAYER_SPEED;
+				}
 
-			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) > 8000)
-			{
-				player->dx = PLAYER_SPEED;
+				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) > 8000)
+				{
+					player->dx = PLAYER_SPEED;
+				}
 			}
 
 			// Calculate aiming direction
@@ -511,34 +528,115 @@ static void doFighters(void)
 			free(e);
 			e = prev;
 		}
-
-		else if (player != NULL && e != player && collision(player->x, player->y, player->w, player->h, e->x, e->y, e->w, e->h))
+		else
 		{
-			// Player and enemy collided, both should die
-			e->health = 0;
-			if (player->health > 25)
+			// Check collisions with other fighters
+			Entity *other;
+			for (other = stage.fighterHead.next; other != NULL; other = other->next)
 			{
-				player->health -= 25;
-				playSound(SND_PLAYER_DIE, CH_PLAYER);
-				if (player->health == 0)
+				if (e != other && collisionWithHitbox(e, other))
 				{
-					player->health = 25; // Weird logic but the player will die now
+					handleFighterCollision(e, other);
 				}
 			}
-			else if (player->health == 0 || player->health <= 25)
-			{
-				player->health = 0;
-				addExplosions(player->x, player->y, 32); // Create explosion at player's position
-				addDebris(player);						 // Add debris for player
-				playSound(SND_PLAYER_DIE, CH_PLAYER);	 // Play player death sound
-			}
-
-			addExplosions(e->x, e->y, 32); // Create explosion at enemy's position
-
-			addDebris(e); // Add debris for enemy
 		}
 
 		prev = e;
+	}
+}
+
+// Function to check collision with hitbox
+bool collisionWithHitbox(Entity *e1, Entity *e2)
+{
+	// Calculate hitbox size (half the width and height)
+	float hitboxSizeX = HITBOX_SIZE * 0.5f;
+	float hitboxSizeY = HITBOX_SIZE * 0.5f;
+
+	// Calculate centers
+	float e1CenterX = e1->x + e1->w / 2.0f;
+	float e1CenterY = e1->y + e1->h / 2.0f;
+	float e2CenterX = e2->x + e2->w / 2.0f;
+	float e2CenterY = e2->y + e2->h / 2.0f;
+
+	// Check if hitboxes overlap
+	if (fabs(e1CenterX - e2CenterX) < hitboxSizeX + e1->w / 2.0f + e2->w / 2.0f &&
+		fabs(e1CenterY - e2CenterY) < hitboxSizeY + e1->h / 2.0f + e2->h / 2.0f)
+	{
+		return true; // Collision detected
+	}
+
+	return false; // No collision
+}
+
+// Function to handle collision response between fighters
+void handleFighterCollision(Entity *e1, Entity *e2)
+{
+	shipCollision = true;
+
+	collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
+
+	// Calculate centers
+	float e1CenterX = e1->x + e1->w / 2.0f;
+	float e1CenterY = e1->y + e1->h / 2.0f;
+	float e2CenterX = e2->x + e2->w / 2.0f;
+	float e2CenterY = e2->y + e2->h / 2.0f;
+
+	// Calculate direction vector from e2 to e1
+	float dx = e1CenterX - e2CenterX;
+	float dy = e1CenterY - e2CenterY;
+	float distance = sqrt(dx * dx + dy * dy);
+
+	// Normalize direction vector
+	if (distance != 0.0f)
+	{
+		dx /= distance;
+		dy /= distance;
+	}
+
+	// Calculate overlap distance
+	float overlap = HITBOX_SIZE;
+
+	// Separate entities based on overlap
+	e1->x += overlap * dx;
+	e1->y += overlap * dy;
+	e2->x -= overlap * dx;
+	e2->y -= overlap * dy;
+
+	// Calculate relative velocity along the collision normal
+	float relativeVelocityX = e1->dx - e2->dx;
+	float relativeVelocityY = e1->dy - e2->dy;
+	float dotProduct = relativeVelocityX * dx + relativeVelocityY * dy;
+
+	int e1Mass = 50;
+	int e2Mass = 50;
+
+	float impulse = -(1.0f + COLLISION_RESTITUTION) * dotProduct / (1.0f / e1Mass + 1.0f / e2Mass);
+
+	e1->dx += impulse / e1Mass * dx;
+	e1->dy += impulse / e1Mass * dy;
+	e2->dx -= impulse / e2Mass * dx;
+	e2->dy -= impulse / e2Mass * dy;
+
+	e1->health -= 25;
+	e2->health -= 25;
+
+	// Play sound for collision
+	addExplosions(e2->x, e2->y, 10);
+	playSound(SND_SHIP_HIT, CH_ANY);
+
+	if (e2->health <= 0)
+	{
+		e2->health = 0;
+		playSound(SND_ALIEN_DIE, CH_ANY);
+		addExplosions(e2->x, e2->y, 32);
+		addDebris(e2);
+	}
+	if (e1->health <= 24)
+	{
+		e1->health = 0;
+		playSound(SND_PLAYER_DIE, CH_ANY);
+		addExplosions(e1->x, e1->y, 32);
+		addDebris(e1);
 	}
 }
 
@@ -939,6 +1037,18 @@ static void draw(void)
 		// Render the player's texture with rotation
 		SDL_Rect playerRect = {player->x, player->y, player->w, player->h};
 		SDL_RenderCopyEx(app.renderer, playerTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+		// Draw fire effect if boost is active
+		// if (player->boostActive)
+		// {
+		// 	// Assuming fireTexture is your texture for the fire effect
+		// 	// Position the fire effect relative to player's position and dimensions
+		// 	int fireOffsetX = -20;			 // Adjust this as needed for positioning
+		// 	int fireOffsetY = player->h / 2; // Adjust this as needed for positioning
+		// 	SDL_Rect fireRect = {player->x + fireOffsetX, player->y + fireOffsetY, player->w + 20, player->h / 2};
+
+		// 	// Render the fire texture with rotation
+		// 	SDL_RenderCopyEx(app.renderer, fireTexture, NULL, &fireRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+		// }
 	}
 }
 
@@ -1139,12 +1249,14 @@ static void toggleBoost(bool activate)
 	{
 		if (player->boostCooldown <= 0) // Check if boost is not on cooldown
 		{
-			player->boostTimer = 120; // Set boost timer to 2 seconds (assuming 60 frames per second)
-			PLAYER_SPEED += 7;		  // Increment player speed for boost
+			player->boostTimer = 120;	// Set boost timer to 2 seconds (assuming 60 frames per second)
+			PLAYER_SPEED += 7;			// Increment player speed for boost
+			player->boostActive = true; // Set boost active flag
 		}
 	}
 	else
 	{
-		PLAYER_SPEED = 4; // Reset player speed to base speed
+		PLAYER_SPEED = 4;			 // Reset player speed to base speed
+		player->boostActive = false; // Reset boost active flag
 	}
 }

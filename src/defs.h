@@ -50,6 +50,10 @@
 #define ABILITY_BAR_WIDTH 100
 #define ABILITY_BAR_HEIGHT 5
 
+#define HITBOX_SIZE 10.0f
+#define COLLISION_COOLDOWN_MS 500 // Half-second cooldown
+#define COLLISION_RESTITUTION 0.1f
+
 enum
 {
 	CH_ANY = -1,
