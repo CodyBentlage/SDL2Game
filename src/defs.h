@@ -7,6 +7,9 @@
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 650
 
+#define WORLD_WIDTH 5000
+#define WORLD_HEIGHT 5000
+
 #define MAX_SCORE_NAME_LENGTH 16
 #define MAX_NAME_LENGTH 32
 #define MAX_LINE_LENGTH 1024
@@ -51,7 +54,7 @@
 #define ABILITY_BAR_HEIGHT 5
 
 #define HITBOX_SIZE 10.0f
-#define COLLISION_COOLDOWN_MS 500 // Half-second cooldown
+#define COLLISION_COOLDOWN_MS 500 // Five-second cooldown
 #define COLLISION_RESTITUTION 0.1f
 
 enum

@@ -6,6 +6,7 @@
 #include "stage.h"
 #include "text.h"
 #include "util.h"
+#include "enemies.h"
 
 extern App app;
 extern Highscores highscores;
@@ -13,30 +14,45 @@ extern Stage stage;
 
 static void logic(void);
 static void draw(void);
+
 static void initPlayer(void);
+static void doPlayer(void);
+
 static void fireBullet(float angle);
 static void fireShotgun(float angle);
-static void doPlayer(void);
+
 static void doFighters(void);
 static void doBullets(void);
 static void drawFighters(void);
+
 static void drawBullets(void);
-static void spawnEnemies(void);
 static int bulletHitFighter(Entity *b);
+
 static void doEnemies(void);
 static void fireAlienBullet(Entity *e);
+
 static void clipPlayer(void);
+
 static void resetStage(void);
+
 static void drawExplosions(void);
 static void doExplosions(void);
 static void addExplosions(int x, int y, int num);
+
 static void addDebris(Entity *e);
 static void doDebris(void);
 static void drawDebris(void);
+
 static void drawHud(void);
+
 static void doShotgunPods(void);
+static void addShotgunPods(int x, int y);
 static void drawShotgunPods(void);
-static void addShotgunPod(int x, int y);
+
+static void doHealthPods(void);
+static void addHealthPods(int x, int y);
+static void drawHealthPods(void);
+
 static void toggleBoost(bool activate);
 
 static Entity *player;
@@ -46,7 +62,7 @@ static SDL_Texture *alienBulletTexture;
 static SDL_Texture *playerTexture;
 static SDL_Texture *explosionTexture;
 static SDL_Texture *pointsTexture;
-static SDL_Texture *fireTexture;
+static SDL_Texture *healthTexture;
 static int enemySpawnTimer;
 static int stageResetTimer;
 static int shotgunEnabled = 0;
@@ -72,7 +88,7 @@ void initStage(void)
 	playerTexture = loadTexture("gfx/player.png");
 	explosionTexture = loadTexture("gfx/explosion.png");
 	pointsTexture = loadTexture("gfx/points.png");
-	fireTexture = loadTexture("gfx/boosterFire.png");
+	healthTexture = loadTexture("gfx/health.png");
 
 	memset(app.keyboard, 0, sizeof(int) * MAX_KEYBOARD_KEYS);
 	memset(app.mouse_buttons, 0, sizeof(int) * MAX_MOUSE_BUTTONS);
@@ -127,10 +143,17 @@ static void resetStage(void)
 		free(d);
 	}
 
-	while (stage.shotgunHead.next)
+	while (stage.shotgunPodHead.next)
 	{
-		e = stage.shotgunHead.next;
-		stage.shotgunHead.next = e->next;
+		e = stage.shotgunPodHead.next;
+		stage.shotgunPodHead.next = e->next;
+		free(e);
+	}
+
+	while (stage.healthPodHead.next)
+	{
+		e = stage.healthPodHead.next;
+		stage.healthPodHead.next = e->next;
 		free(e);
 	}
 
@@ -139,7 +162,8 @@ static void resetStage(void)
 	stage.bulletTail = &stage.bulletHead;
 	stage.explosionTail = &stage.explosionHead;
 	stage.debrisTail = &stage.debrisHead;
-	stage.pointsTail = &stage.shotgunHead;
+	stage.shotgunPodTail = &stage.shotgunPodHead;
+	stage.healthPodTail = &stage.healthPodHead;
 }
 
 static void initPlayer()
@@ -183,7 +207,11 @@ static void logic(void)
 
 	doShotgunPods();
 
-	spawnEnemies();
+	doHealthPods();
+
+	spawnEnemyFighters();
+	spawnEnemyMosquitos();
+	spawnEnemyTheCube();
 
 	clipPlayer();
 
@@ -575,7 +603,7 @@ bool collisionWithHitbox(Entity *e1, Entity *e2)
 // Function to handle collision response between fighters
 void handleFighterCollision(Entity *e1, Entity *e2)
 {
-	shipCollision = true;
+	// shipCollision = true;
 
 	collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
 
@@ -637,7 +665,11 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 		addDebris(e2);
 		if (rand() % 20 == 0)
 		{
-			addShotgunPod(e2->x + e2->w / 2, e2->y + e2->h / 2);
+			addShotgunPods(e2->x + e2->w / 2, e2->y + e2->h / 2);
+		}
+		if (rand() % 20 == 0)
+		{
+			addHealthPods(e2->x + e2->w / 2, e2->y + e2->h / 2);
 		}
 	}
 	if (e1->health <= 0)
@@ -704,7 +736,11 @@ static int bulletHitFighter(Entity *b)
 				{
 					if (rand() % 10 == 0)
 					{
-						addShotgunPod(e->x + e->w / 2, e->y + e->h / 2);
+						addShotgunPods(e->x + e->w / 2, e->y + e->h / 2);
+					}
+					if (rand() % 10 == 0)
+					{
+						addHealthPods(e->x + e->w / 2, e->y + e->h / 2);
 					}
 					stage.score++;
 					playSound(SND_ALIEN_DIE, CH_ANY);
@@ -725,36 +761,6 @@ static int bulletHitFighter(Entity *b)
 	}
 
 	return 0;
-}
-
-static void spawnEnemies(void)
-{
-	Entity *enemy;
-
-	if (--enemySpawnTimer <= 0)
-	{
-		enemy = malloc(sizeof(Entity));
-		memset(enemy, 0, sizeof(Entity));
-		stage.fighterTail->next = enemy;
-		stage.fighterTail = enemy;
-
-		enemy->x = SCREEN_WIDTH;
-		enemy->y = rand() % (SCREEN_HEIGHT - 70); // Ensure enemy spawns below the HUD area
-		enemy->texture = enemyTexture;
-		SDL_QueryTexture(enemy->texture, NULL, NULL, &enemy->w, &enemy->h);
-
-		enemy->dx = -(2 + (rand() % 4));
-		enemy->dy = -100 + (rand() % 200);
-		enemy->dy /= 100;
-
-		enemy->side = SIDE_ALIEN;
-		enemy->maxHealth = 50;
-		enemy->health = 50;
-
-		enemy->reload = FPS * (1 + (rand() % 3));
-
-		enemySpawnTimer = 30 + (rand() % FPS);
-	}
 }
 
 static void clipPlayer(void)
@@ -854,9 +860,9 @@ static void doShotgunPods(void)
 		// Optionally perform cleanup or notify the player that shotgun ability expired
 	}
 
-	prev = &stage.shotgunHead;
+	prev = &stage.shotgunPodHead;
 
-	for (e = stage.shotgunHead.next; e != NULL; e = e->next)
+	for (e = stage.shotgunPodHead.next; e != NULL; e = e->next)
 	{
 		// Check if entity is out of bounds and adjust direction
 		if (e->x < 0)
@@ -902,9 +908,72 @@ static void doShotgunPods(void)
 		// Check entity health and remove if necessary
 		if (--e->health <= 0)
 		{
-			if (e == stage.pointsTail)
+			if (e == stage.shotgunPodTail)
 			{
-				stage.pointsTail = prev;
+				stage.shotgunPodTail = prev;
+			}
+
+			prev->next = e->next;
+			free(e);
+			e = prev;
+		}
+
+		prev = e;
+	}
+}
+
+static void doHealthPods(void)
+{
+	Entity *e, *prev;
+
+	prev = &stage.healthPodHead;
+
+	for (e = stage.healthPodHead.next; e != NULL; e = e->next)
+	{
+		// Check if entity is out of bounds and adjust direction
+		if (e->x < 0)
+		{
+			e->x = 0;
+			e->dx = -e->dx;
+		}
+
+		if (e->x + e->w > SCREEN_WIDTH)
+		{
+			e->x = SCREEN_WIDTH - e->w;
+			e->dx = -e->dx;
+		}
+
+		if (e->y < 0)
+		{
+			e->y = 0;
+			e->dy = -e->dy;
+		}
+
+		if (e->y + e->h > SCREEN_HEIGHT)
+		{
+			e->y = SCREEN_HEIGHT - e->h;
+			e->dy = -e->dy;
+		}
+
+		// Move entity
+		e->x += e->dx;
+		e->y += e->dy;
+
+		// If you collide with the pod you get health
+		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+		{
+			e->health = 0; // Delete the health pod
+			player->health += 200;
+
+			playSound(SND_POINTS, CH_POINTS);
+		}
+
+		// Check entity health and remove if necessary
+		if (--e->health <= 0)
+		{
+			if (e == stage.healthPodTail)
+			{
+				stage.healthPodTail = prev;
 			}
 
 			prev->next = e->next;
@@ -995,14 +1064,14 @@ static void addDebris(Entity *e)
 	}
 }
 
-static void addShotgunPod(int x, int y)
+static void addShotgunPods(int x, int y)
 {
 	Entity *e;
 
 	e = malloc(sizeof(Entity));
 	memset(e, 0, sizeof(Entity));
-	stage.pointsTail->next = e;
-	stage.pointsTail = e;
+	stage.shotgunPodTail->next = e;
+	stage.shotgunPodTail = e;
 
 	e->x = x;
 	e->y = y;
@@ -1017,6 +1086,28 @@ static void addShotgunPod(int x, int y)
 	e->y -= e->h / 2;
 }
 
+static void addHealthPods(int x, int y)
+{
+	Entity *e;
+
+	e = malloc(sizeof(Entity));
+	memset(e, 0, sizeof(Entity));
+	stage.healthPodTail->next = e;
+	stage.healthPodTail = e;
+
+	e->x = x;
+	e->y = y;
+	e->dx = -(rand() % 5);
+	e->dy = (rand() % 5) - (rand() % 5);
+	e->health = FPS * 10;
+	e->texture = healthTexture;
+
+	SDL_QueryTexture(e->texture, NULL, NULL, &e->w, &e->h);
+
+	e->x -= e->w / 2;
+	e->y -= e->h / 2;
+}
+
 static void draw(void)
 {
 	drawBackground();
@@ -1024,6 +1115,7 @@ static void draw(void)
 	drawStarfield();
 
 	drawShotgunPods();
+	drawHealthPods();
 
 	drawFighters();
 
@@ -1066,7 +1158,20 @@ static void drawShotgunPods(void)
 {
 	Entity *e;
 
-	for (e = stage.shotgunHead.next; e != NULL; e = e->next)
+	for (e = stage.shotgunPodHead.next; e != NULL; e = e->next)
+	{
+		if (e->health > (FPS * 2) || e->health % 12 < 6)
+		{
+			blit(e->texture, e->x, e->y);
+		}
+	}
+}
+
+static void drawHealthPods(void)
+{
+	Entity *e;
+
+	for (e = stage.healthPodHead.next; e != NULL; e = e->next)
 	{
 		if (e->health > (FPS * 2) || e->health % 12 < 6)
 		{

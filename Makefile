@@ -177,6 +177,30 @@ src/draw.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/draw.c.s
 .PHONY : src/draw.c.s
 
+src/enemies.o: src/enemies.c.o
+.PHONY : src/enemies.o
+
+# target to build an object file
+src/enemies.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/enemies.c.o
+.PHONY : src/enemies.c.o
+
+src/enemies.i: src/enemies.c.i
+.PHONY : src/enemies.i
+
+# target to preprocess a source file
+src/enemies.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/enemies.c.i
+.PHONY : src/enemies.c.i
+
+src/enemies.s: src/enemies.c.s
+.PHONY : src/enemies.s
+
+# target to generate assembly for a file
+src/enemies.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/enemies.c.s
+.PHONY : src/enemies.c.s
+
 src/highscores.o: src/highscores.c.o
 .PHONY : src/highscores.o
 
@@ -408,6 +432,9 @@ help:
 	@echo "... src/draw.o"
 	@echo "... src/draw.i"
 	@echo "... src/draw.s"
+	@echo "... src/enemies.o"
+	@echo "... src/enemies.i"
+	@echo "... src/enemies.s"
 	@echo "... src/highscores.o"
 	@echo "... src/highscores.i"
 	@echo "... src/highscores.s"

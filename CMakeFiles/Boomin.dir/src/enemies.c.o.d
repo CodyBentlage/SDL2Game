@@ -1,5 +1,5 @@
-CMakeFiles/Boomin.dir/src/stage.c.o: \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/stage.c \
+CMakeFiles/Boomin.dir/src/enemies.c.o: \
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.c \
  /usr/include/stdc-predef.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
  /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_stdinc.h \
@@ -183,11 +183,5 @@ CMakeFiles/Boomin.dir/src/stage.c.o: \
  /usr/include/SDL2/SDL_locale.h /usr/include/SDL2/SDL_misc.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/highscores.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/sound.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/stage.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/text.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/util.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.h
