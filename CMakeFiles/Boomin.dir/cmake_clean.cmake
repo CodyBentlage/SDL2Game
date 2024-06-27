@@ -5,8 +5,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/Boomin.dir/src/background.c.o.d"
   "CMakeFiles/Boomin.dir/src/draw.c.o"
   "CMakeFiles/Boomin.dir/src/draw.c.o.d"
-  "CMakeFiles/Boomin.dir/src/follow.c.o"
-  "CMakeFiles/Boomin.dir/src/follow.c.o.d"
   "CMakeFiles/Boomin.dir/src/highscores.c.o"
   "CMakeFiles/Boomin.dir/src/highscores.c.o.d"
   "CMakeFiles/Boomin.dir/src/init.c.o"

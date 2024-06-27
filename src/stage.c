@@ -245,21 +245,25 @@ void doPlayer(void)
 				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
 				{
 					player->dy = -PLAYER_SPEED;
+					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 				}
 
 				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) > 8000)
 				{
 					player->dy = PLAYER_SPEED;
+					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 				}
 
 				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) < -8000)
 				{
 					player->dx = -PLAYER_SPEED;
+					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 				}
 
 				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) > 8000)
 				{
 					player->dx = PLAYER_SPEED;
+					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 				}
 			}
 
@@ -571,74 +575,80 @@ bool collisionWithHitbox(Entity *e1, Entity *e2)
 // Function to handle collision response between fighters
 void handleFighterCollision(Entity *e1, Entity *e2)
 {
-	shipCollision = true;
+    shipCollision = true;
 
-	collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
+    collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
 
-	// Calculate centers
-	float e1CenterX = e1->x + e1->w / 2.0f;
-	float e1CenterY = e1->y + e1->h / 2.0f;
-	float e2CenterX = e2->x + e2->w / 2.0f;
-	float e2CenterY = e2->y + e2->h / 2.0f;
+    // Calculate centers
+    float e1CenterX = e1->x + e1->w / 2.0f;
+    float e1CenterY = e1->y + e1->h / 2.0f;
+    float e2CenterX = e2->x + e2->w / 2.0f;
+    float e2CenterY = e2->y + e2->h / 2.0f;
 
-	// Calculate direction vector from e2 to e1
-	float dx = e1CenterX - e2CenterX;
-	float dy = e1CenterY - e2CenterY;
-	float distance = sqrt(dx * dx + dy * dy);
+    // Calculate direction vector from e2 to e1
+    float dx = e1CenterX - e2CenterX;
+    float dy = e1CenterY - e2CenterY;
+    float distance = sqrt(dx * dx + dy * dy);
 
-	// Normalize direction vector
-	if (distance != 0.0f)
-	{
-		dx /= distance;
-		dy /= distance;
-	}
+    // Normalize direction vector
+    if (distance != 0.0f)
+    {
+        dx /= distance;
+        dy /= distance;
+    }
 
-	// Calculate overlap distance
-	float overlap = HITBOX_SIZE;
+    // Calculate overlap distance
+    float overlap = HITBOX_SIZE;
 
-	// Separate entities based on overlap
-	e1->x += overlap * dx;
-	e1->y += overlap * dy;
-	e2->x -= overlap * dx;
-	e2->y -= overlap * dy;
+    // Separate entities based on overlap
+    e1->x += overlap * dx;
+    e1->y += overlap * dy;
+    e2->x -= overlap * dx;
+    e2->y -= overlap * dy;
 
-	// Calculate relative velocity along the collision normal
-	float relativeVelocityX = e1->dx - e2->dx;
-	float relativeVelocityY = e1->dy - e2->dy;
-	float dotProduct = relativeVelocityX * dx + relativeVelocityY * dy;
+    // Calculate relative velocity along the collision normal
+    float relativeVelocityX = e1->dx - e2->dx;
+    float relativeVelocityY = e1->dy - e2->dy;
+    float dotProduct = relativeVelocityX * dx + relativeVelocityY * dy;
 
-	int e1Mass = 50;
-	int e2Mass = 50;
+    int e1Mass = 50;
+    int e2Mass = 50;
 
-	float impulse = -(1.0f + COLLISION_RESTITUTION) * dotProduct / (1.0f / e1Mass + 1.0f / e2Mass);
+    float impulse = -(1.0f + COLLISION_RESTITUTION) * dotProduct / (1.0f / e1Mass + 1.0f / e2Mass);
 
-	e1->dx += impulse / e1Mass * dx;
-	e1->dy += impulse / e1Mass * dy;
-	e2->dx -= impulse / e2Mass * dx;
-	e2->dy -= impulse / e2Mass * dy;
+    e1->dx += impulse / e1Mass * dx;
+    e1->dy += impulse / e1Mass * dy;
+    e2->dx -= impulse / e2Mass * dx;
+    e2->dy -= impulse / e2Mass * dy;
 
-	e1->health -= 25;
-	e2->health -= 25;
+    // Adjust health
+    e1->health -= 25;
+    e2->health -= 25;
 
-	// Play sound for collision
-	addExplosions(e2->x, e2->y, 10);
-	playSound(SND_SHIP_HIT, CH_ANY);
+    // Play collision sound
+    playSound(SND_SHIP_HIT, CH_ANY);
 
-	if (e2->health <= 0)
-	{
-		e2->health = 0;
-		playSound(SND_ALIEN_DIE, CH_ANY);
-		addExplosions(e2->x, e2->y, 32);
-		addDebris(e2);
-	}
-	if (e1->health <= 24)
-	{
-		e1->health = 0;
-		playSound(SND_PLAYER_DIE, CH_ANY);
-		addExplosions(e1->x, e1->y, 32);
-		addDebris(e1);
-	}
+    // Handle entity death and effects
+    if (e2->health <= 0)
+    {
+        e2->health = 0;
+        playSound(SND_ALIEN_DIE, CH_ANY);
+        addExplosions(e2->x, e2->y, 32);
+        addDebris(e2);
+        if (rand() % 20 == 0)
+        {
+            addShotgunPod(e2->x + e2->w / 2, e2->y + e2->h / 2);
+        }
+    }
+    if (e1->health <= 0)
+    {
+        e1->health = 0;
+        playSound(SND_PLAYER_DIE, CH_ANY);
+        addExplosions(e1->x, e1->y, 32);
+        addDebris(e1);
+    }
 }
+
 
 static void doBullets(void)
 {
@@ -693,7 +703,7 @@ static int bulletHitFighter(Entity *b)
 				}
 				else
 				{
-					if (rand() % 20 == 0)
+					if (rand() % 10 == 0)
 					{
 						addShotgunPod(e->x + e->w / 2, e->y + e->h / 2);
 					}
@@ -1037,6 +1047,7 @@ static void draw(void)
 		// Render the player's texture with rotation
 		SDL_Rect playerRect = {player->x, player->y, player->w, player->h};
 		SDL_RenderCopyEx(app.renderer, playerTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+
 		// Draw fire effect if boost is active
 		// if (player->boostActive)
 		// {
