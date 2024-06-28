@@ -110,6 +110,9 @@ void initStage(void)
 
 	stage.score = 0;
 
+	stage.cameraX = 0;
+	stage.cameraY = 0;
+
 	initPlayer();
 
 	enemySpawnTimer = 0;
@@ -202,6 +205,8 @@ static void initPlayer()
 
 static void logic(void)
 {
+	updateCamera();
+
 	doBackground();
 
 	doStarfield();
@@ -228,7 +233,7 @@ static void logic(void)
 
 	clipPlayer();
 
-    // Setting the volume
+	// Setting the volume
 	setMusicVolume(20);
 
 	if (!app.controller && player == NULL && --stageResetTimer <= 0)
@@ -481,23 +486,51 @@ static void fireShotgun(float angle)
 static void doEnemies(void)
 {
 	Entity *e;
-
-	for (e = stage.fighterHead.next; e != NULL; e = e->next)
+	if (player != NULL)
 	{
-		if (e != player) // Ensure the player's position isn't messed with
+		for (e = stage.fighterHead.next; e != NULL; e = e->next)
 		{
-			// Calculate minimum and maximum y positions
-			int minY = 70;						  // Minimum y position to avoid the top HUD
-			int maxY = SCREEN_HEIGHT - e->h - 20; // Maximum y position to avoid the bottom cutoff
-
-			// Restrict vertical movement within screen bounds
-			e->y = MIN(MAX(e->y, minY), maxY);
-
-			// Fire bullets
-			if (player != NULL && --e->reload <= 0)
+			if (e != player) // Ensure the player's position isn't messed with
 			{
-				fireAlienBullet(e);						  // Example function to fire bullets
-				playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
+				// Calculate direction to the player
+				float dx = player->x - e->x;
+				float dy = player->y - e->y;
+				float distance = sqrt(dx * dx + dy * dy);
+
+				// Normalize direction vector and set enemy speed
+				if (distance != 0)
+				{
+					dx /= distance;
+					dy /= distance;
+				}
+
+				e->x += dx * ENEMY_SPEED;
+				e->y += dy * ENEMY_SPEED;
+
+				// Restrict enemies to within world boundaries
+				if (e->x < 10)
+				{
+					e->x = 10;
+				}
+				if (e->y < 70)
+				{
+					e->y = 70;
+				}
+				if (e->x > WORLD_WIDTH - (e->w + 20))
+				{
+					e->x = WORLD_WIDTH - (e->w + 20);
+				}
+				if (e->y > WORLD_HEIGHT - (e->h + 20))
+				{
+					e->y = WORLD_HEIGHT - (e->h + 20);
+				}
+
+				// Fire bullets
+				if (player != NULL && --e->reload <= 0)
+				{
+					fireAlienBullet(e);						  // Example function to fire bullets
+					playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
+				}
 			}
 		}
 	}
@@ -555,7 +588,7 @@ static void doFighters(void)
 		e->x += e->dx;
 		e->y += e->dy;
 
-		if (e != player && e->x < -e->w)
+		if ((e != player && e->x - (stage.cameraX - 500) < -e->w) || (e != player && e->y - (stage.cameraY - 500) < -e->h))
 		{
 			e->health = 0;
 		}
@@ -621,6 +654,7 @@ bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
 				playSound(SND_SHIP_DOWN, CH_SHIP_DOWN);
 				collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
 				shipCollision = true; // Player collision
+				player->boostCooldown = 300;
 			}
 		}
 
@@ -720,7 +754,7 @@ static void doBullets(void)
 		b->y += b->dy;
 
 		// Check if the bullet hits an entity or goes out of bounds
-		if (bulletHitFighter(b) || b->x < -b->w || b->y < -b->h || b->x > SCREEN_WIDTH || b->y > SCREEN_HEIGHT)
+		if (bulletHitFighter(b) || b->x - stage.cameraX < -b->w || b->y - stage.cameraY < -b->h || b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT)
 		{
 			if (b == stage.bulletTail)
 			{
@@ -797,20 +831,17 @@ static void clipPlayer(void)
 		{
 			player->x = 0;
 		}
-
 		if (player->y < 70)
 		{
 			player->y = 70;
 		}
-
-		if (player->x > SCREEN_WIDTH - player->w)
+		if (player->x > WORLD_WIDTH - player->w)
 		{
-			player->x = SCREEN_WIDTH - player->w;
+			player->x = WORLD_WIDTH - player->w;
 		}
-
-		if (player->y > SCREEN_HEIGHT - player->h)
+		if (player->y > WORLD_HEIGHT - player->h)
 		{
-			player->y = SCREEN_HEIGHT - player->h;
+			player->y = WORLD_HEIGHT - player->h;
 		}
 	}
 }
@@ -897,9 +928,9 @@ static void doShotgunPods(void)
 			e->dx = -e->dx;
 		}
 
-		if (e->x + e->w > SCREEN_WIDTH)
+		if (e->x + e->w > WORLD_WIDTH)
 		{
-			e->x = SCREEN_WIDTH - e->w;
+			e->x = WORLD_WIDTH - e->w;
 			e->dx = -e->dx;
 		}
 
@@ -909,9 +940,9 @@ static void doShotgunPods(void)
 			e->dy = -e->dy;
 		}
 
-		if (e->y + e->h > SCREEN_HEIGHT)
+		if (e->y + e->h > WORLD_HEIGHT)
 		{
-			e->y = SCREEN_HEIGHT - e->h;
+			e->y = WORLD_HEIGHT - e->h;
 			e->dy = -e->dy;
 		}
 
@@ -963,9 +994,9 @@ static void doHealthPods(void)
 			e->dx = -e->dx;
 		}
 
-		if (e->x + e->w > SCREEN_WIDTH)
+		if (e->x + e->w > WORLD_WIDTH)
 		{
-			e->x = SCREEN_WIDTH - e->w;
+			e->x = WORLD_WIDTH - e->w;
 			e->dx = -e->dx;
 		}
 
@@ -975,9 +1006,9 @@ static void doHealthPods(void)
 			e->dy = -e->dy;
 		}
 
-		if (e->y + e->h > SCREEN_HEIGHT)
+		if (e->y + e->h > WORLD_HEIGHT)
 		{
-			e->y = SCREEN_HEIGHT - e->h;
+			e->y = WORLD_HEIGHT - e->h;
 			e->dy = -e->dy;
 		}
 
@@ -1162,7 +1193,7 @@ static void draw(void)
 		SDL_Point rotationCenter = {player->w / 2, player->h / 2};
 
 		// Render the player's texture with rotation
-		SDL_Rect playerRect = {player->x, player->y, player->w, player->h};
+		SDL_Rect playerRect = {player->x - stage.cameraX, player->y - stage.cameraY, player->w, player->h};
 
 		// Draw boost effect if boost is active
 		if (player->boostActive)
@@ -1213,7 +1244,7 @@ static void drawShotgunPods(void)
 	{
 		if (e->health > (FPS * 2) || e->health % 12 < 6)
 		{
-			blit(e->texture, e->x, e->y);
+			blit(e->texture, e->x - stage.cameraX, e->y - stage.cameraY);
 		}
 	}
 }
@@ -1226,7 +1257,7 @@ static void drawHealthPods(void)
 	{
 		if (e->health > (FPS * 2) || e->health % 12 < 6)
 		{
-			blit(e->texture, e->x, e->y);
+			blit(e->texture, e->x - stage.cameraX, e->y - stage.cameraY);
 		}
 	}
 }
@@ -1239,7 +1270,7 @@ static void drawFighters(void)
 	{
 		if (e->side == SIDE_ALIEN) // Draw only aliens (not the player)
 		{
-			blitRotated(e->texture, e->x, e->y, e->angle); // Draw enemies with rotation
+			blitRotated(e->texture, e->x - stage.cameraX, e->y - stage.cameraY, e->angle); // Draw enemies with rotation
 		}
 	}
 }
@@ -1257,7 +1288,7 @@ static void drawBullets(void)
 		SDL_Point rotationCenter = {b->w / 2, b->h / 2};
 
 		// Render the bullet's texture with rotation
-		SDL_Rect bulletRect = {(int)b->x, (int)b->y, b->w, b->h};
+		SDL_Rect bulletRect = {(int)b->x - stage.cameraX, (int)b->y - stage.cameraY, b->w, b->h};
 		SDL_RenderCopyEx(app.renderer, b->texture, NULL, &bulletRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
 	}
 }
@@ -1268,7 +1299,7 @@ static void drawDebris(void)
 
 	for (d = stage.debrisHead.next; d != NULL; d = d->next)
 	{
-		blitRect(d->texture, &d->rect, d->x, d->y);
+		blitRect(d->texture, &d->rect, d->x - stage.cameraX, d->y - stage.cameraY);
 	}
 }
 
@@ -1284,7 +1315,7 @@ static void drawExplosions(void)
 		SDL_SetTextureColorMod(explosionTexture, e->r, e->g, e->b);
 		SDL_SetTextureAlphaMod(explosionTexture, e->a);
 
-		blit(explosionTexture, e->x, e->y);
+		blit(explosionTexture, e->x - stage.cameraX, e->y - stage.cameraY);
 	}
 
 	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_NONE);
@@ -1335,8 +1366,8 @@ static void drawHud(void)
 				int initialHealthBarWidth = (int)(enemy->w * (float)50 / enemy->maxHealth);
 
 				// Calculate position below the enemy sprite
-				int enemyHealthBarX = enemy->x + (enemy->w - initialHealthBarWidth) / 2; // Center health bar horizontally under the enemy
-				int enemyHealthBarY = enemy->y + enemy->h + 5;							 // Adjust vertically below the enemy sprite, e.g., 5 pixels down
+				int enemyHealthBarX = enemy->x - stage.cameraX + (enemy->w - initialHealthBarWidth) / 2; // Center health bar horizontally under the enemy
+				int enemyHealthBarY = enemy->y - stage.cameraY + enemy->h + 5;							 // Adjust vertically below the enemy sprite, e.g., 5 pixels down
 
 				// Draw grey background for health bar
 				SDL_Rect enemyHealthBarBgRect = {enemyHealthBarX, enemyHealthBarY, enemy->w, 4}; // Adjust height and position as needed
@@ -1425,5 +1456,34 @@ static void toggleBoost(bool activate)
 		PLAYER_SPEED = 4;			 // Reset player speed to base speed
 		player->boostActive = false; // Reset boost active flag
 		hyperDriveSoundPlayed = false;
+	}
+}
+
+// Update camera position based on player's movement
+void updateCamera()
+{
+	if (player != NULL)
+	{
+		// Example: Center camera on player
+		stage.cameraX = player->x - (SCREEN_WIDTH / 2);
+		stage.cameraY = player->y - (SCREEN_HEIGHT / 2);
+
+		// Clamp camera position to game world boundaries
+		if (stage.cameraX < 0)
+		{
+			stage.cameraX = 0;
+		}
+		if (stage.cameraY < 0)
+		{
+			stage.cameraY = 0;
+		}
+		if (stage.cameraX > WORLD_WIDTH - SCREEN_WIDTH)
+		{
+			stage.cameraX = WORLD_WIDTH - SCREEN_WIDTH;
+		}
+		if (stage.cameraY > WORLD_HEIGHT - SCREEN_HEIGHT)
+		{
+			stage.cameraY = WORLD_HEIGHT - SCREEN_HEIGHT;
+		}
 	}
 }

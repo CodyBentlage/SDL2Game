@@ -16,6 +16,8 @@
 
 #define FPS 60
 
+#define ENEMY_SPEED 3
+
 #define PLAYER_BULLET_SPEED 20
 #define ALIEN_BULLET_SPEED 8
 

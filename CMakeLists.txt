@@ -10,7 +10,8 @@ pkg_search_module(SDL2_TTF REQUIRED SDL2_ttf)
 # Find giflib
 find_package(GIF REQUIRED)
 
-add_compile_options(-Wall -Wempty-body -Werror -Wstrict-prototypes -Werror=maybe-uninitialized -Warray-bounds -g)
+# Ensure that we build with debug information
+set(CMAKE_BUILD_TYPE Debug)
 
 # Add the include directories of the (found) libraries.
 Include_Directories(
@@ -22,6 +23,9 @@ Include_Directories(
 )
 
 file(GLOB SOURCES src/defs.h src/structs.h src/*.c src/*.h src/*/*.c src/*/*.h)
+
+# Add debug information and other useful compile options
+add_compile_options(-Wall -Wempty-body -Werror -Wstrict-prototypes -Werror=maybe-uninitialized -Warray-bounds -g)
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 

@@ -84,6 +84,9 @@ typedef struct
 	Explosion explosionHead, *explosionTail;
 	Debris debrisHead, *debrisTail;
 	int score;
+	int currentEnemyCount;
+	int cameraX;
+	int cameraY;
 } Stage;
 
 typedef struct
