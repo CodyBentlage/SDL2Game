@@ -46,4 +46,21 @@ static void loadSounds(void)
 	sounds[SND_SHIP_HIT] = Mix_LoadWAV("sound/shipHit.ogg");
 	sounds[SND_ALIEN_DIE] = Mix_LoadWAV("sound/10 Guage Shotgun-SoundBible.com-74120584.ogg");
 	sounds[SND_POINTS] = Mix_LoadWAV("sound/342749__rhodesmas__notification-01.ogg");
+	sounds[SND_HYPER_DRIVE] = Mix_LoadWAV("sound/hyperDrive.ogg");
+	sounds[SND_SHIP_DOWN] = Mix_LoadWAV("sound/shipDown.ogg");
+
+	// Set individual volume levels for each sound
+	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE], 20);  // Full volume
+	Mix_VolumeChunk(sounds[SND_ALIEN_FIRE], 20);   // Full volume
+	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 20);  // Full volume
+	Mix_VolumeChunk(sounds[SND_SHIP_HIT], 20);	   // Full volume
+	Mix_VolumeChunk(sounds[SND_ALIEN_DIE], 20);	   // Full volume
+	Mix_VolumeChunk(sounds[SND_POINTS], 20);	   // Full volume
+	Mix_VolumeChunk(sounds[SND_HYPER_DRIVE], 128); // Full volume
+	Mix_VolumeChunk(sounds[SND_SHIP_DOWN], 128);   // Full volume
+}
+
+void setMusicVolume(int volume)
+{
+	Mix_VolumeMusic(volume);
 }

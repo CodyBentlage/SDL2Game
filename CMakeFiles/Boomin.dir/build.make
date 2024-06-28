@@ -268,6 +268,8 @@ Boomin: CMakeFiles/Boomin.dir/src/text.c.o
 Boomin: CMakeFiles/Boomin.dir/src/title.c.o
 Boomin: CMakeFiles/Boomin.dir/src/util.c.o
 Boomin: CMakeFiles/Boomin.dir/build.make
+Boomin: /usr/lib/x86_64-linux-gnu/libgif.so
+Boomin: /usr/lib/x86_64-linux-gnu/libgif.so
 Boomin: CMakeFiles/Boomin.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Linking C executable Boomin"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Boomin.dir/link.txt --verbose=$(VERBOSE)

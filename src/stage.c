@@ -63,6 +63,11 @@ static SDL_Texture *playerTexture;
 static SDL_Texture *explosionTexture;
 static SDL_Texture *pointsTexture;
 static SDL_Texture *healthTexture;
+static SDL_Texture *currentTexture;
+static SDL_Texture *playerBoostTexture1;
+static SDL_Texture *playerBoostTexture2;
+static SDL_Texture *playerBoostTexture3;
+static SDL_Texture *playerBoostTexture4;
 static int enemySpawnTimer;
 static int stageResetTimer;
 static int shotgunEnabled = 0;
@@ -73,9 +78,12 @@ static float PLAYER_SPEED = 4;
 static float aim_angle = 0.0f;
 
 bool isBoostActive = false;
+bool hyperDriveSoundPlayed = false;
 
 bool shipCollision = false;
 static Uint32 collisionCooldownEndTime = 0;
+
+static int flameGifFrame = 0;
 
 void initStage(void)
 {
@@ -89,6 +97,11 @@ void initStage(void)
 	explosionTexture = loadTexture("gfx/explosion.png");
 	pointsTexture = loadTexture("gfx/points.png");
 	healthTexture = loadTexture("gfx/health.png");
+	playerBoostTexture1 = loadTexture("gfx/playerFlamegif_0.png");
+	playerBoostTexture2 = loadTexture("gfx/playerFlamegif_1.png");
+	playerBoostTexture3 = loadTexture("gfx/playerFlamegif_2.png");
+	playerBoostTexture4 = loadTexture("gfx/playerFlamegif_3.png");
+	currentTexture = playerBoostTexture3;
 
 	memset(app.keyboard, 0, sizeof(int) * MAX_KEYBOARD_KEYS);
 	memset(app.mouse_buttons, 0, sizeof(int) * MAX_MOUSE_BUTTONS);
@@ -214,6 +227,9 @@ static void logic(void)
 	spawnEnemyTheCube();
 
 	clipPlayer();
+
+    // Setting the volume
+	setMusicVolume(20);
 
 	if (!app.controller && player == NULL && --stageResetTimer <= 0)
 	{
@@ -566,7 +582,7 @@ static void doFighters(void)
 			Entity *other;
 			for (other = stage.fighterHead.next; other != NULL; other = other->next)
 			{
-				if (e != other && collisionWithHitbox(e, other))
+				if (e != other && collisionWithHitbox(e, other, player))
 				{
 					handleFighterCollision(e, other);
 				}
@@ -578,7 +594,7 @@ static void doFighters(void)
 }
 
 // Function to check collision with hitbox
-bool collisionWithHitbox(Entity *e1, Entity *e2)
+bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
 {
 	// Calculate hitbox size (half the width and height)
 	float hitboxSizeX = HITBOX_SIZE * 0.5f;
@@ -594,6 +610,20 @@ bool collisionWithHitbox(Entity *e1, Entity *e2)
 	if (fabs(e1CenterX - e2CenterX) < hitboxSizeX + e1->w / 2.0f + e2->w / 2.0f &&
 		fabs(e1CenterY - e2CenterY) < hitboxSizeY + e1->h / 2.0f + e2->h / 2.0f)
 	{
+		// Determine if e1 is the player
+		bool e1IsPlayer = (e1 == player);
+
+		// Handle specific actions based on whether e1 (player or NPC) collided
+		if (e1IsPlayer)
+		{
+			if (rand() % 40 == 0)
+			{
+				playSound(SND_SHIP_DOWN, CH_SHIP_DOWN);
+				collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
+				shipCollision = true; // Player collision
+			}
+		}
+
 		return true; // Collision detected
 	}
 
@@ -603,10 +633,6 @@ bool collisionWithHitbox(Entity *e1, Entity *e2)
 // Function to handle collision response between fighters
 void handleFighterCollision(Entity *e1, Entity *e2)
 {
-	// shipCollision = true;
-
-	collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
-
 	// Calculate centers
 	float e1CenterX = e1->x + e1->w / 2.0f;
 	float e1CenterY = e1->y + e1->h / 2.0f;
@@ -1137,20 +1163,45 @@ static void draw(void)
 
 		// Render the player's texture with rotation
 		SDL_Rect playerRect = {player->x, player->y, player->w, player->h};
-		SDL_RenderCopyEx(app.renderer, playerTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
 
-		// Draw fire effect if boost is active
-		// if (player->boostActive)
-		// {
-		// 	// Assuming fireTexture is your texture for the fire effect
-		// 	// Position the fire effect relative to player's position and dimensions
-		// 	int fireOffsetX = -20;			 // Adjust this as needed for positioning
-		// 	int fireOffsetY = player->h / 2; // Adjust this as needed for positioning
-		// 	SDL_Rect fireRect = {player->x + fireOffsetX, player->y + fireOffsetY, player->w + 20, player->h / 2};
+		// Draw boost effect if boost is active
+		if (player->boostActive)
+		{
+			if (hyperDriveSoundPlayed == false)
+			{
+				playSound(SND_HYPER_DRIVE, CH_HYPER_DRIVE);
+			}
+			hyperDriveSoundPlayed = true;
 
-		// 	// Render the fire texture with rotation
-		// 	SDL_RenderCopyEx(app.renderer, fireTexture, NULL, &fireRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
-		// }
+			if (flameGifFrame == 41)
+			{
+				flameGifFrame = 0;
+			}
+
+			flameGifFrame++;
+
+			if (flameGifFrame <= 10)
+			{
+				currentTexture = playerBoostTexture1;
+			}
+			else if (flameGifFrame <= 20)
+			{
+				currentTexture = playerBoostTexture2;
+			}
+			else if (flameGifFrame <= 30)
+			{
+				currentTexture = playerBoostTexture3;
+			}
+			else if (flameGifFrame <= 40)
+			{
+				currentTexture = playerBoostTexture4;
+			}
+			SDL_RenderCopyEx(app.renderer, currentTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+		}
+		else
+		{ // Draw the player normally by default
+			SDL_RenderCopyEx(app.renderer, playerTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+		}
 	}
 }
 
@@ -1373,5 +1424,6 @@ static void toggleBoost(bool activate)
 	{
 		PLAYER_SPEED = 4;			 // Reset player speed to base speed
 		player->boostActive = false; // Reset boost active flag
+		hyperDriveSoundPlayed = false;
 	}
 }

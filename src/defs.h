@@ -54,7 +54,7 @@
 #define ABILITY_BAR_HEIGHT 5
 
 #define HITBOX_SIZE 10.0f
-#define COLLISION_COOLDOWN_MS 500 // Five-second cooldown
+#define COLLISION_COOLDOWN_MS 5000 // Five-second cooldown
 #define COLLISION_RESTITUTION 0.1f
 
 enum
@@ -62,7 +62,9 @@ enum
 	CH_ANY = -1,
 	CH_PLAYER,
 	CH_ALIEN_FIRE,
-	CH_POINTS
+	CH_POINTS,
+	CH_HYPER_DRIVE,
+	CH_SHIP_DOWN
 };
 
 enum
@@ -73,6 +75,8 @@ enum
 	SND_SHIP_HIT,
 	SND_ALIEN_DIE,
 	SND_POINTS,
+	SND_HYPER_DRIVE,
+	SND_SHIP_DOWN,
 	SND_MAX
 };
 
