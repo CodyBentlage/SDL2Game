@@ -100,6 +100,7 @@ void initGame(void)
 	loadMusic(musicTracks[trackIndex]);
 
 	playMusic(1);
+	setMusicVolume(20);
 }
 
 void cleanup(void)

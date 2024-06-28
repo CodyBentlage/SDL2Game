@@ -8,7 +8,7 @@ static SDL_Texture *enemyFighterTexture;
 static SDL_Texture *enemyMosquitoTexture;
 static SDL_Texture *enemyTheCube;
 
-static int maxEnemies = 500;
+static int maxEnemies = 50;
 
 static int enemySpawnTimer;
 

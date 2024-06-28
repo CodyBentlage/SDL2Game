@@ -8,6 +8,7 @@
         "enemies.h": "c",
         "stage.h": "c",
         "sound.h": "c",
-        "common.h": "c"
+        "common.h": "c",
+        "util.h": "c"
     }
 }

@@ -233,9 +233,6 @@ static void logic(void)
 
 	clipPlayer();
 
-	// Setting the volume
-	setMusicVolume(20);
-
 	if (!app.controller && player == NULL && --stageResetTimer <= 0)
 	{
 		addHighscore(stage.score);
@@ -720,6 +717,7 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 	if (e2->health <= 0)
 	{
 		e2->health = 0;
+		stage.currentEnemyCount--;
 		playSound(SND_ALIEN_DIE, CH_ANY);
 		addExplosions(e2->x, e2->y, 32);
 		addDebris(e2);
@@ -804,6 +802,7 @@ static int bulletHitFighter(Entity *b)
 					}
 					stage.score++;
 					playSound(SND_ALIEN_DIE, CH_ANY);
+					stage.currentEnemyCount--;
 				}
 			}
 
