@@ -20,6 +20,8 @@ static void doPlayer(void);
 
 static void fireBullet(float angle);
 static void fireShotgun(float angle);
+static void fireLaser(float angle);
+static void fireFlame(float angle);
 
 static void doFighters(void);
 static void doBullets(void);
@@ -49,6 +51,14 @@ static void doShotgunPods(void);
 static void addShotgunPods(int x, int y);
 static void drawShotgunPods(void);
 
+static void doLaserPods(void);
+static void addLaserPods(int x, int y);
+static void drawLaserPods(void);
+
+static void doFlamePods(void);
+static void addFlamePods(int x, int y);
+static void drawFlamePods(void);
+
 static void doHealthPods(void);
 static void addHealthPods(int x, int y);
 static void drawHealthPods(void);
@@ -57,11 +67,15 @@ static void toggleBoost(bool activate);
 
 static Entity *player;
 static SDL_Texture *bulletTexture;
+static SDL_Texture *laserTexture;
+static SDL_Texture *flameTexture;
 static SDL_Texture *enemyTexture;
 static SDL_Texture *alienBulletTexture;
 static SDL_Texture *playerTexture;
 static SDL_Texture *explosionTexture;
 static SDL_Texture *pointsTexture;
+static SDL_Texture *laserPodTexture;
+static SDL_Texture *flamePodTexture;
 static SDL_Texture *healthTexture;
 static SDL_Texture *currentTexture;
 static SDL_Texture *playerBoostTexture1;
@@ -70,11 +84,20 @@ static SDL_Texture *playerBoostTexture3;
 static SDL_Texture *playerBoostTexture4;
 static int enemySpawnTimer;
 static int stageResetTimer;
+
 static int shotgunEnabled = 0;
 static int shotgunDuration = 0;
 static Uint32 shotgunStartTime = 0;
-static float PLAYER_SPEED = 4;
 
+static int laserEnabled = 0;
+static int laserDuration = 0;
+static Uint32 laserStartTime = 0;
+
+static int flameEnabled = 0;
+static int flameDuration = 0;
+static Uint32 flameStartTime = 0;
+
+static float PLAYER_SPEED = 4;
 static float aim_angle = 0.0f;
 
 bool isBoostActive = false;
@@ -93,11 +116,15 @@ void initStage(void)
 	app.delegate.draw = draw;
 
 	bulletTexture = loadTexture("gfx/playerBullet.png");
+	laserTexture = loadTexture("gfx/playerBullet.png");
+	flameTexture = loadTexture("gfx/flameBullet.png");
 	enemyTexture = loadTexture("gfx/enemy.png");
 	alienBulletTexture = loadTexture("gfx/alienBullet.png");
 	playerTexture = loadTexture("gfx/player.png");
 	explosionTexture = loadTexture("gfx/explosion.png");
 	pointsTexture = loadTexture("gfx/points.png");
+	laserPodTexture = loadTexture("gfx/laserPod.png");
+	flamePodTexture = loadTexture("gfx/flamePod.png");
 	healthTexture = loadTexture("gfx/health.png");
 	playerBoostTexture1 = loadTexture("gfx/playerFlamegif_0.png");
 	playerBoostTexture2 = loadTexture("gfx/playerFlamegif_1.png");
@@ -122,6 +149,8 @@ void initStage(void)
 	stageResetTimer = FPS * 3;
 
 	shotgunDuration = 0;
+	laserDuration = 0;
+	flameDuration = 0;
 
 	PLAYER_SPEED = 4;
 }
@@ -133,6 +162,9 @@ static void resetStage(void)
 	Debris *d;
 
 	shotgunEnabled = 0;
+	laserEnabled = 0;
+	flameEnabled = 0;
+
 	while (stage.fighterHead.next)
 	{
 		e = stage.fighterHead.next;
@@ -168,6 +200,20 @@ static void resetStage(void)
 		free(e);
 	}
 
+	while (stage.laserPodHead.next)
+	{
+		e = stage.laserPodHead.next;
+		stage.laserPodHead.next = e->next;
+		free(e);
+	}
+
+	while (stage.flamePodHead.next)
+	{
+		e = stage.flamePodHead.next;
+		stage.flamePodHead.next = e->next;
+		free(e);
+	}
+
 	while (stage.healthPodHead.next)
 	{
 		e = stage.healthPodHead.next;
@@ -181,6 +227,8 @@ static void resetStage(void)
 	stage.explosionTail = &stage.explosionHead;
 	stage.debrisTail = &stage.debrisHead;
 	stage.shotgunPodTail = &stage.shotgunPodHead;
+	stage.laserPodTail = &stage.laserPodHead;
+	stage.flamePodTail = &stage.flamePodHead;
 	stage.healthPodTail = &stage.healthPodHead;
 }
 
@@ -226,7 +274,8 @@ static void logic(void)
 	doDebris();
 
 	doShotgunPods();
-
+	doLaserPods();
+	doFlamePods();
 	doHealthPods();
 
 	spawnEnemyFighters();
@@ -326,15 +375,25 @@ void doPlayer(void)
 			}
 			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) && player->reload <= 0)
 			{
-				playSound(SND_PLAYER_FIRE, CH_PLAYER);
 
 				if (shotgunEnabled == 1)
 				{
 					fireShotgun(aim_angle);
+					playSound(SND_PLAYER_FIRE, CH_PLAYER);
+				}
+				else if (laserEnabled == 1)
+				{
+					fireLaser(aim_angle);
+					playSound(SND_PLAYER_FIRE_LASER, CH_PLAYER_FIRE_LASER);
+				}
+				else if (flameEnabled == 1)
+				{
+					fireFlame(aim_angle);
 				}
 				else
 				{
 					fireBullet(aim_angle);
+					playSound(SND_PLAYER_FIRE, CH_PLAYER);
 				}
 			}
 			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
@@ -485,6 +544,96 @@ static void fireShotgun(float angle)
 	player->reload = 8;
 }
 
+static void fireLaser(float angle)
+{
+	Entity *laser;
+
+	laser = malloc(sizeof(Entity));
+	if (!laser)
+	{
+		fprintf(stderr, "Failed to allocate memory for laser\n");
+		exit(1); // Handle memory allocation failure gracefully
+	}
+
+	memset(laser, 0, sizeof(Entity));
+	stage.bulletTail->next = laser;
+	stage.bulletTail = laser;
+
+	laser->texture = laserTexture; // Assuming you have a laser texture
+	SDL_QueryTexture(laser->texture, NULL, NULL, &laser->w, &laser->h);
+
+	// Define laser size and duration (burst)
+	laser->w = 200;			// Example width for a huge space laser
+	laser->h = 20;			// Example height for a huge space laser
+	int laserDuration = 10; // Frames the laser will last
+
+	// Calculate spawn position relative to the player's center
+	float spawnDistance = player->w / 3.0f + laser->w / 3.0f; // Distance from player center to laser spawn point
+
+	// Calculate spawn offsets based on firing angle
+	float spawnOffsetX = spawnDistance * cosf(angle);
+	float spawnOffsetY = spawnDistance * sinf(angle);
+
+	// Adjust laser spawn position based on player's center and spawn offsets
+	laser->x = player->x + player->w / 2.0f - laser->w / 2.0f + spawnOffsetX;
+	laser->y = player->y + player->h / 2.0f - laser->h / 2.0f + spawnOffsetY;
+
+	// Adjust direction based on angle
+	laser->dx = cosf(angle) * LASER_SPEED; // LASER_SPEED should be defined as a constant
+	laser->dy = sinf(angle) * LASER_SPEED;
+
+	laser->health = laserDuration; // Laser lasts for a number of frames
+	laser->side = SIDE_PLAYER;
+	laser->angle = angle; // Store firing angle
+
+	player->reload = 20; // Adjust reload time for balance, higher for a big burst laser
+}
+
+static void fireFlame(float angle)
+{
+	Entity *flame;
+
+	flame = malloc(sizeof(Entity));
+	if (!flame)
+	{
+		fprintf(stderr, "Failed to allocate memory for flame\n");
+		exit(1); // Handle memory allocation failure gracefully
+	}
+
+	memset(flame, 0, sizeof(Entity));
+	stage.bulletTail->next = flame;
+	stage.bulletTail = flame;
+
+	flame->texture = flameTexture; // Assuming you have a flame texture
+	SDL_QueryTexture(flame->texture, NULL, NULL, &flame->w, &flame->h);
+
+	// Define flame size and duration (burst)
+	flame->w = 200;			// Example width for a huge space flame
+	flame->h = 20;			// Example height for a huge space flame
+	int flameDuration = 10; // Frames the flame will last
+
+	// Calculate spawn position relative to the player's center
+	float spawnDistance = player->w / 3.0f + flame->w / 3.0f; // Distance from player center to flame spawn point
+
+	// Calculate spawn offsets based on firing angle
+	float spawnOffsetX = spawnDistance * cosf(angle);
+	float spawnOffsetY = spawnDistance * sinf(angle);
+
+	// Adjust flame spawn position based on player's center and spawn offsets
+	flame->x = player->x + player->w / 2.0f - flame->w / 2.0f + spawnOffsetX;
+	flame->y = player->y + player->h / 2.0f - flame->h / 2.0f + spawnOffsetY;
+
+	// Adjust direction based on angle
+	flame->dx = cosf(angle) * FLAME_SPEED; // flame_SPEED should be defined as a constant
+	flame->dy = sinf(angle) * FLAME_SPEED;
+
+	flame->health = flameDuration; // flame lasts for a number of frames
+	flame->side = SIDE_PLAYER;
+	flame->angle = angle; // Store firing angle
+
+	player->reload = 1; // Adjust reload time for balance, higher for a big burst laser
+}
+
 static void doEnemies(void)
 {
 	Entity *e;
@@ -508,6 +657,10 @@ static void doEnemies(void)
 
 				e->x += dx * ENEMY_SPEED;
 				e->y += dy * ENEMY_SPEED;
+
+				// Calculate and store the angle of movement
+				e->angle = atan2(dy, dx) + M_PI;
+				// Use atan2 to get the angle in radians
 
 				// Restrict enemies to within world boundaries
 				if (e->x < 10)
@@ -562,9 +715,6 @@ static void fireAlienBullet(Entity *e)
 
 	bullet->dx *= ALIEN_BULLET_SPEED;
 	bullet->dy *= ALIEN_BULLET_SPEED;
-
-	// Calculate angle in radians and adjust it by π to flip the direction
-	e->angle = atan2(bullet->dy, bullet->dx) + M_PI;
 
 	e->reload = (rand() % FPS * 2);
 }
@@ -733,9 +883,17 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 		playSound(SND_ALIEN_DIE, CH_ANY);
 		addExplosions(e2->x, e2->y, 32);
 		addDebris(e2);
-		if (rand() % 20 == 0)
+		if (rand() % 30 == 0)
 		{
 			addShotgunPods(e2->x + e2->w / 2, e2->y + e2->h / 2);
+		}
+		if (rand() % 100 == 0)
+		{
+			addLaserPods(e2->x + e2->w / 2, e2->y + e2->h / 2);
+		}
+		if (rand() % 200 == 0)
+		{
+			addFlamePods(e2->x + e2->w / 2, e2->y + e2->h / 2);
 		}
 		if (rand() % 20 == 0)
 		{
@@ -764,7 +922,41 @@ static void doBullets(void)
 		b->y += b->dy;
 
 		// Check if the bullet hits an entity or goes out of bounds
-		if (bulletHitFighter(b) || b->x - stage.cameraX < -b->w || b->y - stage.cameraY < -b->h || b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT)
+		if ((laserEnabled == 1) && (b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT))
+		{
+
+			if (b == stage.bulletTail)
+			{
+				stage.bulletTail = prev;
+			}
+
+			prev->next = b->next;
+			free(b);
+			b = prev;
+		}
+		else if ((laserEnabled == 1) && (bulletHitFighter(b)))
+		{
+			// The bullet goes through the enemy and does damage
+		}
+
+		if ((flameEnabled == 1) && (b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT))
+		{
+
+			if (b == stage.bulletTail)
+			{
+				stage.bulletTail = prev;
+			}
+
+			prev->next = b->next;
+			free(b);
+			b = prev;
+		}
+		else if ((flameEnabled == 1) && (bulletHitFighter(b)))
+		{
+			// The bullet goes through the enemy and does damage
+		}
+
+		else if ((laserEnabled != 1) && (bulletHitFighter(b) || b->x - stage.cameraX < -b->w || b->y - stage.cameraY < -b->h || b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT))
 		{
 			if (b == stage.bulletTail)
 			{
@@ -788,10 +980,38 @@ static int bulletHitFighter(Entity *b)
 	{
 		if (e->side != b->side && collision(b->x, b->y, b->w, b->h, e->x, e->y, e->w, e->h))
 		{
-			b->health = 0;
+			if (laserEnabled == 1)
+			{
+				b->health = 1;
+				if (e != player)
+				{
+					e->health = 0;
+				}
+			}
+			else if (laserEnabled != 1)
+			{
+				b->health = 0;
+			}
+
+			if (flameEnabled == 1)
+			{
+				b->health = 1;
+				if (e != player)
+				{
+					e->health -= .00000001;
+				}
+			}
+			else if (flameEnabled != 1)
+			{
+				b->health = 0;
+			}
+
 			if (e->health > 5)
 			{
-				e->health -= 5;
+				if (flameEnabled != 1)
+				{
+					e->health -= 5;
+				}
 			}
 			else
 			{
@@ -804,11 +1024,19 @@ static int bulletHitFighter(Entity *b)
 				}
 				else
 				{
-					if (rand() % 10 == 0)
+					if (rand() % 30 == 0)
 					{
 						addShotgunPods(e->x + e->w / 2, e->y + e->h / 2);
 					}
-					if (rand() % 10 == 0)
+					if (rand() % 100 == 0)
+					{
+						addLaserPods(e->x + e->w / 2, e->y + e->h / 2);
+					}
+					if (rand() % 200 == 0)
+					{
+						addFlamePods(e->x + e->w / 2, e->y + e->h / 2);
+					}
+					if (rand() % 20 == 0)
 					{
 						addHealthPods(e->x + e->w / 2, e->y + e->h / 2);
 					}
@@ -827,7 +1055,10 @@ static int bulletHitFighter(Entity *b)
 			}
 			else if (e != player)
 			{
-				playSound(SND_SHIP_HIT, CH_PLAYER);
+				if (flameEnabled != 1)
+				{
+					playSound(SND_SHIP_HIT, CH_PLAYER);
+				}
 			}
 
 			return 1;
@@ -970,8 +1201,11 @@ static void doShotgunPods(void)
 			e->health = 0;
 
 			shotgunEnabled = 1;
+			laserEnabled = 0;
+			flameEnabled = 0;
 			shotgunStartTime = SDL_GetTicks();
-			shotgunDuration += 10;
+			laserDuration = 0;
+			shotgunDuration = 10;
 
 			playSound(SND_POINTS, CH_POINTS);
 		}
@@ -982,6 +1216,167 @@ static void doShotgunPods(void)
 			if (e == stage.shotgunPodTail)
 			{
 				stage.shotgunPodTail = prev;
+			}
+
+			prev->next = e->next;
+			free(e);
+			e = prev;
+		}
+
+		prev = e;
+	}
+}
+
+static void doLaserPods(void)
+{
+	Entity *e, *prev;
+	Uint32 currentTime;
+
+	// Get current time in milliseconds
+	currentTime = SDL_GetTicks();
+
+	// Check if shotgun ability should be disabled due to time limit
+	if (laserEnabled && (currentTime - laserStartTime >= laserDuration * 1000)) // Convert seconds to milliseconds
+	{
+		laserEnabled = 0;
+		// Optionally perform cleanup or notify the player that shotgun ability expired
+	}
+
+	prev = &stage.laserPodHead;
+
+	for (e = stage.laserPodHead.next; e != NULL; e = e->next)
+	{
+		// Check if entity is out of bounds and adjust direction
+		if (e->x < 0)
+		{
+			e->x = 0;
+			e->dx = -e->dx;
+		}
+
+		if (e->x + e->w > WORLD_WIDTH)
+		{
+			e->x = WORLD_WIDTH - e->w;
+			e->dx = -e->dx;
+		}
+
+		if (e->y < 70)
+		{
+			e->y = 70;
+			e->dy = -e->dy;
+		}
+
+		if (e->y + e->h > WORLD_HEIGHT)
+		{
+			e->y = WORLD_HEIGHT - e->h;
+			e->dy = -e->dy;
+		}
+
+		// Move entity
+		e->x += e->dx;
+		e->y += e->dy;
+
+		// Example collision logic that enables shotgun ability
+		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+		{
+			e->health = 0;
+
+			laserEnabled = 1;
+			shotgunEnabled = 0;
+			flameEnabled = 0;
+			laserStartTime = SDL_GetTicks();
+			shotgunDuration = 0;
+			laserDuration = 10;
+
+			playSound(SND_POINTS, CH_POINTS);
+		}
+
+		// Check entity health and remove if necessary
+		if (--e->health <= 0)
+		{
+			if (e == stage.laserPodTail)
+			{
+				stage.laserPodTail = prev;
+			}
+
+			prev->next = e->next;
+			free(e);
+			e = prev;
+		}
+
+		prev = e;
+	}
+}
+
+static void doFlamePods(void)
+{
+	Entity *e, *prev;
+	Uint32 currentTime;
+
+	// Get current time in milliseconds
+	currentTime = SDL_GetTicks();
+
+	// Check if shotgun ability should be disabled due to time limit
+	if (flameEnabled && (currentTime - flameStartTime >= flameDuration * 1000)) // Convert seconds to milliseconds
+	{
+		flameEnabled = 0;
+		// Optionally perform cleanup or notify the player that shotgun ability expired
+	}
+
+	prev = &stage.flamePodHead;
+
+	for (e = stage.flamePodHead.next; e != NULL; e = e->next)
+	{
+		// Check if entity is out of bounds and adjust direction
+		if (e->x < 0)
+		{
+			e->x = 0;
+			e->dx = -e->dx;
+		}
+
+		if (e->x + e->w > WORLD_WIDTH)
+		{
+			e->x = WORLD_WIDTH - e->w;
+			e->dx = -e->dx;
+		}
+
+		if (e->y < 70)
+		{
+			e->y = 70;
+			e->dy = -e->dy;
+		}
+
+		if (e->y + e->h > WORLD_HEIGHT)
+		{
+			e->y = WORLD_HEIGHT - e->h;
+			e->dy = -e->dy;
+		}
+
+		// Move entity
+		e->x += e->dx;
+		e->y += e->dy;
+
+		// Example collision logic that enables shotgun ability
+		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+		{
+			e->health = 0;
+
+			flameEnabled = 1;
+			laserEnabled = 0;
+			shotgunEnabled = 0;
+			flameStartTime = SDL_GetTicks();
+			shotgunDuration = 0;
+			laserDuration = 0;
+			flameDuration = 10;
+
+			playSound(SND_POINTS, CH_POINTS);
+		}
+
+		// Check entity health and remove if necessary
+		if (--e->health <= 0)
+		{
+			if (e == stage.flamePodTail)
+			{
+				stage.flamePodTail = prev;
 			}
 
 			prev->next = e->next;
@@ -1157,6 +1552,50 @@ static void addShotgunPods(int x, int y)
 	e->y -= e->h / 2;
 }
 
+static void addLaserPods(int x, int y)
+{
+	Entity *e;
+
+	e = malloc(sizeof(Entity));
+	memset(e, 0, sizeof(Entity));
+	stage.laserPodTail->next = e;
+	stage.laserPodTail = e;
+
+	e->x = x;
+	e->y = y;
+	e->dx = -(rand() % 5);
+	e->dy = (rand() % 5) - (rand() % 5);
+	e->health = FPS * 10;
+	e->texture = laserPodTexture;
+
+	SDL_QueryTexture(e->texture, NULL, NULL, &e->w, &e->h);
+
+	e->x -= e->w / 2;
+	e->y -= e->h / 2;
+}
+
+static void addFlamePods(int x, int y)
+{
+	Entity *e;
+
+	e = malloc(sizeof(Entity));
+	memset(e, 0, sizeof(Entity));
+	stage.flamePodTail->next = e;
+	stage.flamePodTail = e;
+
+	e->x = x;
+	e->y = y;
+	e->dx = -(rand() % 5);
+	e->dy = (rand() % 5) - (rand() % 5);
+	e->health = FPS * 10;
+	e->texture = flamePodTexture;
+
+	SDL_QueryTexture(e->texture, NULL, NULL, &e->w, &e->h);
+
+	e->x -= e->w / 2;
+	e->y -= e->h / 2;
+}
+
 static void addHealthPods(int x, int y)
 {
 	Entity *e;
@@ -1186,6 +1625,8 @@ static void draw(void)
 	drawStarfield();
 
 	drawShotgunPods();
+	drawLaserPods();
+	drawFlamePods();
 	drawHealthPods();
 
 	drawFighters();
@@ -1255,6 +1696,32 @@ static void drawShotgunPods(void)
 	Entity *e;
 
 	for (e = stage.shotgunPodHead.next; e != NULL; e = e->next)
+	{
+		if (e->health > (FPS * 2) || e->health % 12 < 6)
+		{
+			blit(e->texture, e->x - stage.cameraX, e->y - stage.cameraY);
+		}
+	}
+}
+
+static void drawLaserPods(void)
+{
+	Entity *e;
+
+	for (e = stage.laserPodHead.next; e != NULL; e = e->next)
+	{
+		if (e->health > (FPS * 2) || e->health % 12 < 6)
+		{
+			blit(e->texture, e->x - stage.cameraX, e->y - stage.cameraY);
+		}
+	}
+}
+
+static void drawFlamePods(void)
+{
+	Entity *e;
+
+	for (e = stage.flamePodHead.next; e != NULL; e = e->next)
 	{
 		if (e->health > (FPS * 2) || e->health % 12 < 6)
 		{
@@ -1395,22 +1862,61 @@ static void drawHud(void)
 			}
 		}
 
-		// Calculate remaining time percentage for shotgun ability (if needed)
-		Uint32 currentTime = SDL_GetTicks();
-		Uint32 elapsedTime = currentTime - shotgunStartTime;
-		float remainingTimePercentage = 1.0f - (float)elapsedTime / (shotgunDuration * 1000); // Convert to seconds
+		if (shotgunEnabled == 1)
+		{
+			// Calculate remaining time percentage for shotgun ability (if needed)
+			Uint32 currentTime = SDL_GetTicks();
+			Uint32 elapsedShotgunTime = currentTime - shotgunStartTime;
+			float remainingTimePercentage = 1.0f - (float)elapsedShotgunTime / (shotgunDuration * 1000); // Convert to seconds
 
-		// Clamp the percentage to [0, 1] range
-		if (remainingTimePercentage < 0)
-			remainingTimePercentage = 0;
-		else if (remainingTimePercentage > 1)
-			remainingTimePercentage = 1;
+			// Clamp the percentage to [0, 1] range
+			if (remainingTimePercentage < 0)
+				remainingTimePercentage = 0;
+			else if (remainingTimePercentage > 1)
+				remainingTimePercentage = 1;
 
-		// Draw the timer bar for shotgun ability
-		int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
-		SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
-		SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
-		SDL_RenderFillRect(app.renderer, &timerBarRect);
+			// Draw the timer bar for shotgun ability
+			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
+			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
+			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
+			SDL_RenderFillRect(app.renderer, &timerBarRect);
+		}
+		else if (laserEnabled == 1)
+		{ // Calculate remaining time percentage for shotgun ability (if needed)
+			Uint32 currentTime = SDL_GetTicks();
+			Uint32 elapsedLaserTime = currentTime - laserStartTime;
+			float remainingTimePercentage = 1.0f - (float)elapsedLaserTime / (laserDuration * 1000); // Convert to seconds
+
+			// Clamp the percentage to [0, 1] range
+			if (remainingTimePercentage < 0)
+				remainingTimePercentage = 0;
+			else if (remainingTimePercentage > 1)
+				remainingTimePercentage = 1;
+
+			// Draw the timer bar for shotgun ability
+			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
+			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
+			SDL_SetRenderDrawColor(app.renderer, 100, 100, 255, 255); // Blue color for timer bar
+			SDL_RenderFillRect(app.renderer, &timerBarRect);
+		}
+		else if (flameEnabled == 1)
+		{ // Calculate remaining time percentage for shotgun ability (if needed)
+			Uint32 currentTime = SDL_GetTicks();
+			Uint32 elapsedFLameTime = currentTime - flameStartTime;
+			float remainingTimePercentage = 1.0f - (float)elapsedFLameTime / (flameDuration * 1000); // Convert to seconds
+
+			// Clamp the percentage to [0, 1] range
+			if (remainingTimePercentage < 0)
+				remainingTimePercentage = 0;
+			else if (remainingTimePercentage > 1)
+				remainingTimePercentage = 1;
+
+			// Draw the timer bar for shotgun ability
+			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
+			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
+			SDL_SetRenderDrawColor(app.renderer, 255, 0, 0, 255); // Blue color for timer bar
+			SDL_RenderFillRect(app.renderer, &timerBarRect);
+		}
 
 		// Calculate boost availability percentage
 		float boostPercentage = (float)player->boostTimer / 120.0f; // Assuming boost lasts 2 seconds (120 frames)

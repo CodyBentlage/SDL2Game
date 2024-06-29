@@ -80,6 +80,8 @@ typedef struct
 	Entity fighterHead, *fighterTail;
 	Entity bulletHead, *bulletTail;
 	Entity shotgunPodHead, *shotgunPodTail;
+	Entity laserPodHead, *laserPodTail;
+	Entity flamePodHead, *flamePodTail;
 	Entity healthPodHead, *healthPodTail;
 	Explosion explosionHead, *explosionTail;
 	Debris debrisHead, *debrisTail;
