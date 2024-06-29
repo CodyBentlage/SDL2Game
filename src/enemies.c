@@ -8,16 +8,11 @@ static SDL_Texture *enemyFighterTexture;
 static SDL_Texture *enemyMosquitoTexture;
 static SDL_Texture *enemyTheCube;
 
-static int maxEnemies = 50;
-
 static int enemySpawnTimer;
 
 void spawnEnemyTheCube(void)
 {
     Entity *enemy;
-
-    if (stage.currentEnemyCount < maxEnemies)
-    {
         enemyTheCube = loadTexture("gfx/enemyTheCube.png");
 
         if (--enemySpawnTimer <= 0)
@@ -81,14 +76,12 @@ void spawnEnemyTheCube(void)
             enemySpawnTimer = 1 + (rand() % FPS);
         }
     }
-}
+
 
 void spawnEnemyFighters(void)
 {
     Entity *enemy;
 
-    if (stage.currentEnemyCount < maxEnemies)
-    {
         enemyFighterTexture = loadTexture("gfx/enemyFighter.png");
 
         if (--enemySpawnTimer <= 0)
@@ -152,14 +145,12 @@ void spawnEnemyFighters(void)
             enemySpawnTimer = 20 + (rand() % FPS);
         }
     }
-}
+
 
 void spawnEnemyMosquitos(void)
 {
     Entity *enemy;
 
-    if (stage.currentEnemyCount < maxEnemies)
-    {
         enemyMosquitoTexture = loadTexture("gfx/enemyMosquito.png");
 
         if (--enemySpawnTimer <= 0)
@@ -223,4 +214,3 @@ void spawnEnemyMosquitos(void)
             enemySpawnTimer = 70 + (rand() % FPS);
         }
     }
-}

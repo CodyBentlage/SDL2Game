@@ -1,12 +1,7 @@
 CMakeFiles/Boomin.dir/src/background.c.o: \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.c \
- /usr/include/stdc-predef.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
- /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_stdinc.h \
- /usr/include/SDL2/SDL_config.h \
- /usr/include/x86_64-linux-gnu/SDL2/_real_SDL_config.h \
- /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/begin_code.h \
- /usr/include/SDL2/close_code.h /usr/include/x86_64-linux-gnu/sys/types.h \
+ /usr/include/stdc-predef.h /usr/include/stdlib.h \
+ /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \
  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
  /usr/include/x86_64-linux-gnu/bits/timesize.h \
@@ -14,6 +9,12 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/x86_64-linux-gnu/bits/long-double.h \
  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h \
+ /usr/include/x86_64-linux-gnu/bits/waitflags.h \
+ /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
+ /usr/include/x86_64-linux-gnu/bits/floatn.h \
+ /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
+ /usr/include/x86_64-linux-gnu/sys/types.h \
  /usr/include/x86_64-linux-gnu/bits/types.h \
  /usr/include/x86_64-linux-gnu/bits/typesizes.h \
  /usr/include/x86_64-linux-gnu/bits/time64.h \
@@ -21,7 +22,6 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/clockid_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/time_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/timer_t.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-intn.h /usr/include/endian.h \
  /usr/include/x86_64-linux-gnu/bits/endian.h \
  /usr/include/x86_64-linux-gnu/bits/endianness.h \
@@ -38,8 +38,18 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
  /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h \
  /usr/include/x86_64-linux-gnu/bits/struct_mutex.h \
- /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h /usr/include/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+ /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h /usr/include/alloca.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib-float.h /usr/include/time.h \
+ /usr/include/x86_64-linux-gnu/bits/time.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h \
+ /usr/include/x86_64-linux-gnu/bits/types/locale_t.h \
+ /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h \
+ /usr/include/SDL2/SDL.h /usr/include/SDL2/SDL_main.h \
+ /usr/include/SDL2/SDL_stdinc.h /usr/include/SDL2/SDL_config.h \
+ /usr/include/x86_64-linux-gnu/SDL2/_real_SDL_config.h \
+ /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/begin_code.h \
+ /usr/include/SDL2/close_code.h /usr/include/stdio.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
  /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
@@ -47,14 +57,7 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
  /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
- /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
- /usr/include/x86_64-linux-gnu/bits/floatn.h \
- /usr/include/x86_64-linux-gnu/bits/floatn-common.h /usr/include/stdlib.h \
- /usr/include/x86_64-linux-gnu/bits/waitflags.h \
- /usr/include/x86_64-linux-gnu/bits/waitstatus.h /usr/include/alloca.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-float.h /usr/include/string.h \
- /usr/include/x86_64-linux-gnu/bits/types/locale_t.h \
- /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h \
+ /usr/include/x86_64-linux-gnu/bits/stdio_lim.h /usr/include/string.h \
  /usr/include/strings.h /usr/include/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/types/wint_t.h \
@@ -70,17 +73,11 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
- /usr/include/SDL2/SDL_error.h /usr/include/SDL2/SDL_rwops.h \
- /usr/include/SDL2/SDL_sensor.h /usr/include/SDL2/SDL_joystick.h \
- /usr/include/time.h /usr/include/x86_64-linux-gnu/bits/time.h \
- /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h \
- /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h \
- /usr/include/SDL2/SDL.h /usr/include/SDL2/SDL_main.h \
  /usr/include/SDL2/SDL_assert.h /usr/include/SDL2/SDL_atomic.h \
  /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/SDL_audio.h \
- /usr/include/SDL2/SDL_endian.h /usr/include/SDL2/SDL_mutex.h \
- /usr/include/SDL2/SDL_thread.h /usr/include/SDL2/SDL_clipboard.h \
+ /usr/include/SDL2/SDL_error.h /usr/include/SDL2/SDL_endian.h \
+ /usr/include/SDL2/SDL_mutex.h /usr/include/SDL2/SDL_thread.h \
+ /usr/include/SDL2/SDL_rwops.h /usr/include/SDL2/SDL_clipboard.h \
  /usr/include/SDL2/SDL_cpuinfo.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/immintrin.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/x86gprintrin.h \
@@ -171,7 +168,8 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/SDL2/SDL_surface.h /usr/include/SDL2/SDL_blendmode.h \
  /usr/include/SDL2/SDL_keyboard.h /usr/include/SDL2/SDL_keycode.h \
  /usr/include/SDL2/SDL_scancode.h /usr/include/SDL2/SDL_mouse.h \
- /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_quit.h \
+ /usr/include/SDL2/SDL_joystick.h /usr/include/SDL2/SDL_gamecontroller.h \
+ /usr/include/SDL2/SDL_sensor.h /usr/include/SDL2/SDL_quit.h \
  /usr/include/SDL2/SDL_gesture.h /usr/include/SDL2/SDL_touch.h \
  /usr/include/SDL2/SDL_filesystem.h /usr/include/SDL2/SDL_haptic.h \
  /usr/include/SDL2/SDL_hidapi.h /usr/include/SDL2/SDL_hints.h \
@@ -181,7 +179,10 @@ CMakeFiles/Boomin.dir/src/background.c.o: \
  /usr/include/SDL2/SDL_shape.h /usr/include/SDL2/SDL_system.h \
  /usr/include/SDL2/SDL_timer.h /usr/include/SDL2/SDL_version.h \
  /usr/include/SDL2/SDL_locale.h /usr/include/SDL2/SDL_misc.h \
+ /usr/include/SDL2/SDL_image.h /usr/include/SDL2/SDL.h \
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
+ /usr/include/SDL2/SDL_gamecontroller.h \
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.h
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h

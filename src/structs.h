@@ -29,8 +29,8 @@ typedef struct
 	int joystickButtons[MAX_JOYSTICK_BUTTONS];
 	Texture textureHead, *textureTail;
 	char inputText[MAX_LINE_LENGTH];
-    int mouse_x; // Mouse x position
-    int mouse_y; // Mouse y position
+	int mouse_x; // Mouse x position
+	int mouse_y; // Mouse y position
 } App;
 
 struct Entity
@@ -107,3 +107,10 @@ typedef struct
 {
 	Highscore highscore[NUM_HIGHSCORES];
 } Highscores;
+
+typedef struct
+{
+	SDL_Texture *texture;
+	int x, y;
+	int dx, dy;
+} BackgroundElement;

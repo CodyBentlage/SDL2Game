@@ -85,6 +85,8 @@ static Uint32 collisionCooldownEndTime = 0;
 
 static int flameGifFrame = 0;
 
+bool gamedPaused = false;
+
 void initStage(void)
 {
 	app.delegate.logic = logic;
@@ -339,9 +341,12 @@ void doPlayer(void)
 			{
 				if (player->boostTimer <= 0 && player->boostCooldown <= 0)
 				{
-					playSound(SND_PLAYER_FIRE, CH_PLAYER);
 					toggleBoost(true); // Activate boost
 				}
+			}
+			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_START))
+			{
+				gamedPaused = true;
 			}
 		}
 		else
@@ -586,8 +591,12 @@ static void doFighters(void)
 		e->y += e->dy;
 
 		if ((e != player && e->x - (stage.cameraX - 500) < -e->w) || (e != player && e->y - (stage.cameraY - 500) < -e->h))
-		{
+		{ // If enemy goes out of bounds
 			e->health = 0;
+			if (stage.currentEnemyCount > 0)
+			{
+				stage.currentEnemyCount--;
+			}
 		}
 
 		if (e->health == 0)
@@ -717,7 +726,10 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 	if (e2->health <= 0)
 	{
 		e2->health = 0;
-		stage.currentEnemyCount--;
+		if (stage.currentEnemyCount > 0)
+		{
+			stage.currentEnemyCount--;
+		}
 		playSound(SND_ALIEN_DIE, CH_ANY);
 		addExplosions(e2->x, e2->y, 32);
 		addDebris(e2);
@@ -802,7 +814,10 @@ static int bulletHitFighter(Entity *b)
 					}
 					stage.score++;
 					playSound(SND_ALIEN_DIE, CH_ANY);
-					stage.currentEnemyCount--;
+					if (stage.currentEnemyCount > 0)
+					{
+						stage.currentEnemyCount--;
+					}
 				}
 			}
 
@@ -933,9 +948,9 @@ static void doShotgunPods(void)
 			e->dx = -e->dx;
 		}
 
-		if (e->y < 0)
+		if (e->y < 70)
 		{
-			e->y = 0;
+			e->y = 70;
 			e->dy = -e->dy;
 		}
 
@@ -999,9 +1014,9 @@ static void doHealthPods(void)
 			e->dx = -e->dx;
 		}
 
-		if (e->y < 0)
+		if (e->y < 70)
 		{
-			e->y = 0;
+			e->y = 70;
 			e->dy = -e->dy;
 		}
 
