@@ -64,6 +64,7 @@ static void addHealthPods(int x, int y);
 static void drawHealthPods(void);
 
 static void toggleBoost(bool activate);
+static void toggleSystemsDown(bool activate);
 
 static Entity *player;
 static SDL_Texture *bulletTexture;
@@ -82,6 +83,11 @@ static SDL_Texture *playerBoostTexture1;
 static SDL_Texture *playerBoostTexture2;
 static SDL_Texture *playerBoostTexture3;
 static SDL_Texture *playerBoostTexture4;
+
+static int aim_x;
+static int aim_y;
+static float aim_threshold;
+
 static int enemySpawnTimer;
 static int stageResetTimer;
 
@@ -100,15 +106,18 @@ static Uint32 flameStartTime = 0;
 static float PLAYER_SPEED = 4;
 static float aim_angle = 0.0f;
 
-bool isBoostActive = false;
-bool hyperDriveSoundPlayed = false;
+static bool hyperDriveSoundPlayed = false;
 
-bool shipCollision = false;
-static Uint32 collisionCooldownEndTime = 0;
+static int playerCrashed = 0;
+static bool systemsDown = false;
 
 static int flameGifFrame = 0;
 
-bool gamedPaused = false;
+static int prevStartButtonState = 0;
+
+Uint32 pauseStartTime = 0;
+Uint32 totalPauseDuration = 0;
+Uint32 lastPauseTime = 0;
 
 void initStage(void)
 {
@@ -152,7 +161,18 @@ void initStage(void)
 	laserDuration = 0;
 	flameDuration = 0;
 
+	systemsDown = false;
+	playerCrashed = 0;
+
+	hyperDriveSoundPlayed = false;
+
 	PLAYER_SPEED = 4;
+
+	prevStartButtonState = 0;
+
+	pauseStartTime = 0;
+	totalPauseDuration = 0;
+	lastPauseTime = 0;
 }
 
 static void resetStage(void)
@@ -164,6 +184,17 @@ static void resetStage(void)
 	shotgunEnabled = 0;
 	laserEnabled = 0;
 	flameEnabled = 0;
+
+	systemsDown = false;
+	playerCrashed = 0;
+
+	hyperDriveSoundPlayed = false;
+
+	prevStartButtonState = 0;
+
+	pauseStartTime = 0;
+	totalPauseDuration = 0;
+	lastPauseTime = 0;
 
 	while (stage.fighterHead.next)
 	{
@@ -278,9 +309,12 @@ static void logic(void)
 	doFlamePods();
 	doHealthPods();
 
-	spawnEnemyFighters();
-	spawnEnemyMosquitos();
-	spawnEnemyTheCube();
+	if (stage.gamePaused == false)
+	{
+		spawnEnemyFighters();
+		spawnEnemyMosquitos();
+		spawnEnemyTheCube();
+	}
 
 	clipPlayer();
 
@@ -299,156 +333,279 @@ static void logic(void)
 
 void doPlayer(void)
 {
-	if (shipCollision && SDL_GetTicks() >= collisionCooldownEndTime)
-	{
-		// Reset shipCollision to false
-		shipCollision = false;
-	}
-
+	// Systems logic
 	if (player != NULL)
 	{
-		if (shipCollision == false)
+		if (stage.gamePaused == false)
 		{
-			player->dx = player->dy = 0;
+			if (player->systemsTimer > 0)
+			{
+				player->systemsTimer--;
+
+				if (player->systemsTimer <= 0)
+				{
+					toggleSystemsDown(false);	   // Deactivate systems when timer expires
+					player->systemsCooldown = 120; // Set cooldown to 7 seconds (300 frames, assuming 60 frames per second)
+				}
+			}
+			else if (player->systemsCooldown > 0)
+			{
+				player->systemsCooldown--;
+			}
 		}
 
 		// Update player reload
 		if (player->reload > 0)
 		{
-			player->reload--;
-		}
-
-		// Boost logic
-		if (player->boostTimer > 0)
-		{
-			player->boostTimer--;
-
-			if (player->boostTimer <= 0)
+			if (stage.gamePaused == false)
 			{
-				toggleBoost(false);			 // Deactivate boost when timer expires
-				player->boostCooldown = 180; // Set cooldown to 3 seconds (180 frames, assuming 60 frames per second)
+				player->reload--;
 			}
 		}
-		else if (player->boostCooldown > 0)
+
+		if (stage.gamePaused == false)
 		{
-			player->boostCooldown--;
+			// Boost logic
+			if (player->boostTimer > 0)
+			{
+				player->boostTimer--;
+
+				if (player->boostTimer <= 0)
+				{
+					toggleBoost(false);			 // Deactivate boost when timer expires
+					player->boostCooldown = 180; // Set cooldown to 3 seconds (180 frames, assuming 60 frames per second)
+				}
+			}
+			else if (player->boostCooldown > 0)
+			{
+				player->boostCooldown--;
+			}
+		}
+
+		if (systemsDown == false)
+		{
+			player->dx = player->dy = 0;
 		}
 
 		if (app.controller)
 		{
-			// Handle game controller input
-			if (shipCollision == false)
+			if (stage.gamePaused == false)
 			{
-				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
+				// Handle game controller input
+				if (systemsDown == false)
 				{
-					player->dy = -PLAYER_SPEED;
-					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
+					{
+						player->dy = -PLAYER_SPEED;
+						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					}
+
+					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) > 8000)
+					{
+						player->dy = PLAYER_SPEED;
+						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					}
+
+					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) < -8000)
+					{
+						player->dx = -PLAYER_SPEED;
+						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					}
+
+					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) > 8000)
+					{
+						player->dx = PLAYER_SPEED;
+						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					}
 				}
 
-				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) > 8000)
+				if (!player->boostActive)
 				{
-					player->dy = PLAYER_SPEED;
-					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
-				}
+					// Calculate aiming direction
+					aim_x = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX);
+					aim_y = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY);
+					aim_threshold = 8000.0f;
 
-				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) < -8000)
-				{
-					player->dx = -PLAYER_SPEED;
-					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					if (aim_x * aim_x + aim_y * aim_y > aim_threshold * aim_threshold)
+					{
+						aim_angle = atan2f((float)aim_y, (float)aim_x);
+					}
 				}
+				else if (player->boostActive)
+				{
+					// Calculate aiming direction
+					aim_x = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX);
+					aim_y = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY);
+					aim_threshold = 8000.0f;
 
-				if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) > 8000)
-				{
-					player->dx = PLAYER_SPEED;
-					printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
+					if (aim_x * aim_x + aim_y * aim_y > aim_threshold * aim_threshold)
+					{
+						aim_angle = atan2f((float)aim_y, (float)aim_x);
+					}
 				}
-			}
+				if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) && player->reload <= 0)
+				{
 
-			// Calculate aiming direction
-			int aim_x = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX);
-			int aim_y = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY);
-			float aim_threshold = 8000.0f;
-
-			if (aim_x * aim_x + aim_y * aim_y > aim_threshold * aim_threshold)
-			{
-				aim_angle = atan2f((float)aim_y, (float)aim_x);
-			}
-			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) && player->reload <= 0)
-			{
-
-				if (shotgunEnabled == 1)
-				{
-					fireShotgun(aim_angle);
-					playSound(SND_PLAYER_FIRE, CH_PLAYER);
+					if (shotgunEnabled == 1)
+					{
+						fireShotgun(aim_angle);
+						playSound(SND_PLAYER_FIRE, CH_PLAYER);
+					}
+					else if (laserEnabled == 1)
+					{
+						fireLaser(aim_angle);
+						playSound(SND_PLAYER_FIRE_LASER, CH_PLAYER_FIRE_LASER);
+					}
+					else if (flameEnabled == 1)
+					{
+						fireFlame(aim_angle);
+					}
+					else
+					{
+						fireBullet(aim_angle);
+						playSound(SND_PLAYER_FIRE, CH_PLAYER);
+					}
 				}
-				else if (laserEnabled == 1)
+				if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
 				{
-					fireLaser(aim_angle);
-					playSound(SND_PLAYER_FIRE_LASER, CH_PLAYER_FIRE_LASER);
-				}
-				else if (flameEnabled == 1)
-				{
-					fireFlame(aim_angle);
-				}
-				else
-				{
-					fireBullet(aim_angle);
-					playSound(SND_PLAYER_FIRE, CH_PLAYER);
-				}
-			}
-			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
-			{
-				if (player->boostTimer <= 0 && player->boostCooldown <= 0)
-				{
-					toggleBoost(true); // Activate boost
+					if (player->boostTimer <= 0 && player->boostCooldown <= 0)
+					{
+						toggleBoost(true); // Activate boost
+					}
 				}
 			}
 			if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_START))
 			{
-				gamedPaused = true;
+				// Only toggle the pause state if the button wasn't pressed in the previous frame
+				if (prevStartButtonState == 0)
+				{
+					// Toggle gamePaused state
+					stage.gamePaused = !stage.gamePaused;
+
+					// Handle pausing sounds
+					if (stage.gamePaused == true)
+					{
+						Mix_Pause(CH_HYPER_DRIVE);
+						Mix_Pause(CH_ANY);
+						Mix_Pause(CH_PLAYER);
+						Mix_Pause(CH_PLAYER_FIRE_LASER);
+						Mix_Pause(CH_ALIEN_FIRE);
+						Mix_Pause(CH_POINTS);
+						Mix_Pause(CH_SHIP_DOWN);
+						pauseMusic();
+					}
+					else if (stage.gamePaused == false)
+					{
+						Mix_Resume(CH_HYPER_DRIVE);
+						Mix_Resume(CH_ANY);
+						Mix_Resume(CH_PLAYER);
+						Mix_Resume(CH_PLAYER_FIRE_LASER);
+						Mix_Resume(CH_ALIEN_FIRE);
+						Mix_Resume(CH_POINTS);
+						Mix_Resume(CH_SHIP_DOWN);
+						resumeMusic();
+					}
+
+					if (stage.gamePaused)
+					{
+						// Record when the game was paused
+						pauseStartTime = SDL_GetTicks();
+					}
+					else
+					{
+						// Calculate total pause duration
+						lastPauseTime = SDL_GetTicks() - pauseStartTime;
+						totalPauseDuration += lastPauseTime;
+					}
+				}
+
+				// Update the previous button state to indicate it's pressed
+				prevStartButtonState = 1;
+			}
+			else
+			{
+				// Update the previous button state to indicate it's not pressed
+				prevStartButtonState = 0;
 			}
 		}
 		else
 		{
-			// Handle keyboard and mouse input
-			if (app.keyboard[SDL_SCANCODE_W])
+			if (stage.gamePaused == false)
 			{
-				player->dy = -PLAYER_SPEED;
-			}
-
-			if (app.keyboard[SDL_SCANCODE_A])
-			{
-				player->dx = -PLAYER_SPEED;
-			}
-
-			if (app.keyboard[SDL_SCANCODE_S])
-			{
-				player->dy = PLAYER_SPEED;
-			}
-
-			if (app.keyboard[SDL_SCANCODE_D])
-			{
-				player->dx = PLAYER_SPEED;
-			}
-
-			// Track mouse position
-			float aim_x = (float)(app.mouse_x - player->x);
-			float aim_y = (float)(app.mouse_y - player->y);
-
-			// Calculate aim_angle
-			aim_angle = atan2f(aim_y, aim_x);
-
-			if (app.mouse_buttons[SDL_BUTTON_LEFT] && player->reload <= 0)
-			{
-				playSound(SND_PLAYER_FIRE, CH_PLAYER);
-
-				if (shotgunEnabled == 1)
+				// Handle keyboard and mouse input
+				if (app.keyboard[SDL_SCANCODE_W])
 				{
-					fireShotgun(aim_angle);
+					player->dy = -PLAYER_SPEED;
+				}
+
+				if (app.keyboard[SDL_SCANCODE_A])
+				{
+					player->dx = -PLAYER_SPEED;
+				}
+
+				if (app.keyboard[SDL_SCANCODE_S])
+				{
+					player->dy = PLAYER_SPEED;
+				}
+
+				if (app.keyboard[SDL_SCANCODE_D])
+				{
+					player->dx = PLAYER_SPEED;
+				}
+				if (app.keyboard[SDL_SCANCODE_LSHIFT])
+				{
+					if (player->boostTimer <= 0 && player->boostCooldown <= 0)
+					{
+						toggleBoost(true); // Activate boost
+					}
+				}
+
+				// Track mouse position
+				float aim_x = (float)(app.mouse_x - player->x);
+				float aim_y = (float)(app.mouse_y - player->y);
+
+				// Calculate aim_angle
+				aim_angle = atan2f(aim_y, aim_x);
+
+				if (app.mouse_buttons[SDL_BUTTON_LEFT] && player->reload <= 0)
+				{
+
+					if (shotgunEnabled == 1)
+					{
+						fireShotgun(aim_angle);
+						playSound(SND_PLAYER_FIRE, CH_PLAYER);
+					}
+					else if (laserEnabled == 1)
+					{
+						fireLaser(aim_angle);
+						playSound(SND_PLAYER_FIRE_LASER, CH_PLAYER_FIRE_LASER);
+					}
+					else if (flameEnabled == 1)
+					{
+						fireFlame(aim_angle);
+					}
+					else
+					{
+						fireBullet(aim_angle);
+						playSound(SND_PLAYER_FIRE, CH_PLAYER);
+					}
+				}
+				if (app.keyboard[SDL_SCANCODE_ESCAPE])
+				{
+					// Only toggle the pause state if the button wasn't pressed in the previous frame
+					if (prevStartButtonState == 0)
+					{
+						// Toggle gamePaused state
+						stage.gamePaused = !stage.gamePaused;
+					}
+
+					// Update the previous button state to indicate it's pressed
+					prevStartButtonState = 1;
 				}
 				else
 				{
-					fireBullet(aim_angle);
+					// Update the previous button state to indicate it's not pressed
+					prevStartButtonState = 0;
 				}
 			}
 		}
@@ -637,54 +794,57 @@ static void fireFlame(float angle)
 static void doEnemies(void)
 {
 	Entity *e;
-	if (player != NULL)
+	if (stage.gamePaused == false)
 	{
-		for (e = stage.fighterHead.next; e != NULL; e = e->next)
+		if (player != NULL)
 		{
-			if (e != player) // Ensure the player's position isn't messed with
+			for (e = stage.fighterHead.next; e != NULL; e = e->next)
 			{
-				// Calculate direction to the player
-				float dx = player->x - e->x;
-				float dy = player->y - e->y;
-				float distance = sqrt(dx * dx + dy * dy);
+				if (e != player) // Ensure the player's position isn't messed with
+				{
+					// Calculate direction to the player
+					float dx = player->x - e->x;
+					float dy = player->y - e->y;
+					float distance = sqrt(dx * dx + dy * dy);
 
-				// Normalize direction vector and set enemy speed
-				if (distance != 0)
-				{
-					dx /= distance;
-					dy /= distance;
-				}
+					// Normalize direction vector and set enemy speed
+					if (distance != 0)
+					{
+						dx /= distance;
+						dy /= distance;
+					}
 
-				e->x += dx * ENEMY_SPEED;
-				e->y += dy * ENEMY_SPEED;
+					e->x += dx * ENEMY_SPEED;
+					e->y += dy * ENEMY_SPEED;
 
-				// Calculate and store the angle of movement
-				e->angle = atan2(dy, dx) + M_PI;
-				// Use atan2 to get the angle in radians
+					// Calculate and store the angle of movement
+					e->angle = atan2(dy, dx) + M_PI;
+					// Use atan2 to get the angle in radians
 
-				// Restrict enemies to within world boundaries
-				if (e->x < 10)
-				{
-					e->x = 10;
-				}
-				if (e->y < 70)
-				{
-					e->y = 70;
-				}
-				if (e->x > WORLD_WIDTH - (e->w + 20))
-				{
-					e->x = WORLD_WIDTH - (e->w + 20);
-				}
-				if (e->y > WORLD_HEIGHT - (e->h + 20))
-				{
-					e->y = WORLD_HEIGHT - (e->h + 20);
-				}
+					// Restrict enemies to within world boundaries
+					if (e->x < 10)
+					{
+						e->x = 10;
+					}
+					if (e->y < 70)
+					{
+						e->y = 70;
+					}
+					if (e->x > WORLD_WIDTH - (e->w + 20))
+					{
+						e->x = WORLD_WIDTH - (e->w + 20);
+					}
+					if (e->y > WORLD_HEIGHT - (e->h + 20))
+					{
+						e->y = WORLD_HEIGHT - (e->h + 20);
+					}
 
-				// Fire bullets
-				if (player != NULL && --e->reload <= 0)
-				{
-					fireAlienBullet(e);						  // Example function to fire bullets
-					playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
+					// Fire bullets
+					if (player != NULL && --e->reload <= 0)
+					{
+						fireAlienBullet(e);						  // Example function to fire bullets
+						playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
+					}
 				}
 			}
 		}
@@ -737,8 +897,11 @@ static void doFighters(void)
 
 	for (e = stage.fighterHead.next; e != NULL; e = e->next)
 	{
-		e->x += e->dx;
-		e->y += e->dy;
+		if (stage.gamePaused == false)
+		{
+			e->y += e->dy;
+			e->x += e->dx;
+		}
 
 		if ((e != player && e->x - (stage.cameraX - 500) < -e->w) || (e != player && e->y - (stage.cameraY - 500) < -e->h))
 		{ // If enemy goes out of bounds
@@ -754,6 +917,9 @@ static void doFighters(void)
 			if (e == player)
 			{
 				player = NULL;
+				Mix_Pause(CH_SHIP_DOWN);
+				Mix_Pause(CH_HYPER_DRIVE);
+				Mix_Pause(CH_POINTS);
 			}
 
 			if (e == stage.fighterTail)
@@ -785,36 +951,43 @@ static void doFighters(void)
 // Function to check collision with hitbox
 bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
 {
-	// Calculate hitbox size (half the width and height)
-	float hitboxSizeX = HITBOX_SIZE * 0.5f;
-	float hitboxSizeY = HITBOX_SIZE * 0.5f;
-
-	// Calculate centers
-	float e1CenterX = e1->x + e1->w / 2.0f;
-	float e1CenterY = e1->y + e1->h / 2.0f;
-	float e2CenterX = e2->x + e2->w / 2.0f;
-	float e2CenterY = e2->y + e2->h / 2.0f;
-
-	// Check if hitboxes overlap
-	if (fabs(e1CenterX - e2CenterX) < hitboxSizeX + e1->w / 2.0f + e2->w / 2.0f &&
-		fabs(e1CenterY - e2CenterY) < hitboxSizeY + e1->h / 2.0f + e2->h / 2.0f)
+	if (stage.gamePaused == false)
 	{
-		// Determine if e1 is the player
-		bool e1IsPlayer = (e1 == player);
+		// Calculate hitbox size (half the width and height)
+		float hitboxSizeX = HITBOX_SIZE * 0.5f;
+		float hitboxSizeY = HITBOX_SIZE * 0.5f;
 
-		// Handle specific actions based on whether e1 (player or NPC) collided
-		if (e1IsPlayer)
+		// Calculate centers
+		float e1CenterX = e1->x + e1->w / 2.0f;
+		float e1CenterY = e1->y + e1->h / 2.0f;
+		float e2CenterX = e2->x + e2->w / 2.0f;
+		float e2CenterY = e2->y + e2->h / 2.0f;
+
+		// Check if hitboxes overlap
+		if (fabs(e1CenterX - e2CenterX) < hitboxSizeX + e1->w / 2.0f + e2->w / 2.0f &&
+			fabs(e1CenterY - e2CenterY) < hitboxSizeY + e1->h / 2.0f + e2->h / 2.0f)
 		{
-			if (rand() % 40 == 0)
-			{
-				playSound(SND_SHIP_DOWN, CH_SHIP_DOWN);
-				collisionCooldownEndTime = SDL_GetTicks() + COLLISION_COOLDOWN_MS;
-				shipCollision = true; // Player collision
-				player->boostCooldown = 300;
-			}
-		}
+			// Determine if e1 is the player
+			bool e1IsPlayer = (e1 == player);
 
-		return true; // Collision detected
+			// Handle specific actions based on whether e1 (player or NPC) collided
+			if (e1IsPlayer)
+			{
+				playerCrashed++;
+				if (rand() % 30 == 0)
+				{
+					if ((systemsDown == false) && (player->systemsCooldown <= 0) && (playerCrashed > 10))
+					{
+						playSound(SND_SHIP_DOWN, CH_SHIP_DOWN);
+						toggleSystemsDown(true);
+						player->boostCooldown = 300;
+						playerCrashed = 0;
+					}
+				}
+			}
+
+			return true; // Collision detected
+		}
 	}
 
 	return false; // No collision
@@ -880,7 +1053,8 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 		{
 			stage.currentEnemyCount--;
 		}
-		playSound(SND_ALIEN_DIE, CH_ANY);
+		Mix_Pause(CH_ALIEN_DIES);
+		playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 		addExplosions(e2->x, e2->y, 32);
 		addDebris(e2);
 		if (rand() % 30 == 0)
@@ -903,7 +1077,8 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 	if (e1->health <= 0)
 	{
 		e1->health = 0;
-		playSound(SND_PLAYER_DIE, CH_ANY);
+		Mix_Pause(CH_PLAYER_DIES);
+		playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
 		addExplosions(e1->x, e1->y, 32);
 		addDebris(e1);
 	}
@@ -918,8 +1093,11 @@ static void doBullets(void)
 	for (b = stage.bulletHead.next; b != NULL; b = b->next)
 	{
 		// Update bullet position based on velocity
-		b->x += b->dx;
-		b->y += b->dy;
+		if (stage.gamePaused == false)
+		{
+			b->x += b->dx;
+			b->y += b->dy;
+		}
 
 		// Check if the bullet hits an entity or goes out of bounds
 		if ((laserEnabled == 1) && (b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT))
@@ -985,7 +1163,10 @@ static int bulletHitFighter(Entity *b)
 				b->health = 1;
 				if (e != player)
 				{
-					e->health = 0;
+					if (stage.gamePaused == false)
+					{
+						e->health = 0;
+					}
 				}
 			}
 			else if (laserEnabled != 1)
@@ -998,7 +1179,10 @@ static int bulletHitFighter(Entity *b)
 				b->health = 1;
 				if (e != player)
 				{
-					e->health -= .00000001;
+					if (stage.gamePaused == false)
+					{
+						e->health -= .00000001;
+					}
 				}
 			}
 			else if (flameEnabled != 1)
@@ -1010,7 +1194,10 @@ static int bulletHitFighter(Entity *b)
 			{
 				if (flameEnabled != 1)
 				{
-					e->health -= 5;
+					if (stage.gamePaused == false)
+					{
+						e->health -= 5;
+					}
 				}
 			}
 			else
@@ -1020,7 +1207,8 @@ static int bulletHitFighter(Entity *b)
 				addDebris(e);
 				if (e == player)
 				{
-					playSound(SND_PLAYER_DIE, CH_PLAYER);
+					Mix_Pause(CH_PLAYER_DIES);
+					playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
 				}
 				else
 				{
@@ -1041,7 +1229,8 @@ static int bulletHitFighter(Entity *b)
 						addHealthPods(e->x + e->w / 2, e->y + e->h / 2);
 					}
 					stage.score++;
-					playSound(SND_ALIEN_DIE, CH_ANY);
+					Mix_Pause(CH_ALIEN_DIES);
+					playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 					if (stage.currentEnemyCount > 0)
 					{
 						stage.currentEnemyCount--;
@@ -1051,11 +1240,7 @@ static int bulletHitFighter(Entity *b)
 
 			if (e == player)
 			{
-				playSound(SND_SHIP_HIT, CH_PLAYER);
-			}
-			else if (e != player)
-			{
-				if (flameEnabled != 1)
+				if (stage.gamePaused == false)
 				{
 					playSound(SND_SHIP_HIT, CH_PLAYER);
 				}
@@ -1095,26 +1280,30 @@ static void doExplosions(void)
 {
 	Explosion *e, *prev;
 
-	prev = &stage.explosionHead;
-
-	for (e = stage.explosionHead.next; e != NULL; e = e->next)
+	if (stage.gamePaused == false)
 	{
-		e->x += e->dx;
-		e->y += e->dy;
 
-		if (--e->a <= 0)
+		prev = &stage.explosionHead;
+
+		for (e = stage.explosionHead.next; e != NULL; e = e->next)
 		{
-			if (e == stage.explosionTail)
+			e->x += e->dx;
+			e->y += e->dy;
+
+			if (--e->a <= 0)
 			{
-				stage.explosionTail = prev;
+				if (e == stage.explosionTail)
+				{
+					stage.explosionTail = prev;
+				}
+
+				prev->next = e->next;
+				free(e);
+				e = prev;
 			}
 
-			prev->next = e->next;
-			free(e);
-			e = prev;
+			prev = e;
 		}
-
-		prev = e;
 	}
 }
 
@@ -1122,28 +1311,32 @@ static void doDebris(void)
 {
 	Debris *d, *prev;
 
-	prev = &stage.debrisHead;
-
-	for (d = stage.debrisHead.next; d != NULL; d = d->next)
+	if (stage.gamePaused == false)
 	{
-		d->x += d->dx;
-		d->y += d->dy;
 
-		d->dy += 0.5;
+		prev = &stage.debrisHead;
 
-		if (--d->life <= 0)
+		for (d = stage.debrisHead.next; d != NULL; d = d->next)
 		{
-			if (d == stage.debrisTail)
+			d->x += d->dx;
+			d->y += d->dy;
+
+			d->dy += 0.5;
+
+			if (--d->life <= 0)
 			{
-				stage.debrisTail = prev;
+				if (d == stage.debrisTail)
+				{
+					stage.debrisTail = prev;
+				}
+
+				prev->next = d->next;
+				free(d);
+				d = prev;
 			}
 
-			prev->next = d->next;
-			free(d);
-			d = prev;
+			prev = d;
 		}
-
-		prev = d;
 	}
 }
 
@@ -1152,78 +1345,82 @@ static void doShotgunPods(void)
 	Entity *e, *prev;
 	Uint32 currentTime;
 
-	// Get current time in milliseconds
-	currentTime = SDL_GetTicks();
-
-	// Check if shotgun ability should be disabled due to time limit
-	if (shotgunEnabled && (currentTime - shotgunStartTime >= shotgunDuration * 1000)) // Convert seconds to milliseconds
+	if (stage.gamePaused == false)
 	{
-		shotgunEnabled = 0;
-		// Optionally perform cleanup or notify the player that shotgun ability expired
-	}
+		// Get current time in milliseconds
+		currentTime = SDL_GetTicks();
 
-	prev = &stage.shotgunPodHead;
-
-	for (e = stage.shotgunPodHead.next; e != NULL; e = e->next)
-	{
-		// Check if entity is out of bounds and adjust direction
-		if (e->x < 0)
+		// Check if shotgun ability should be disabled due to time limit
+		if (shotgunEnabled && (currentTime - shotgunStartTime - totalPauseDuration >= shotgunDuration * 1000)) // Convert seconds to milliseconds
 		{
-			e->x = 0;
-			e->dx = -e->dx;
+			shotgunEnabled = 0;
+			// Optionally perform cleanup or notify the player that shotgun ability expired
 		}
 
-		if (e->x + e->w > WORLD_WIDTH)
+		prev = &stage.shotgunPodHead;
+
+		for (e = stage.shotgunPodHead.next; e != NULL; e = e->next)
 		{
-			e->x = WORLD_WIDTH - e->w;
-			e->dx = -e->dx;
-		}
-
-		if (e->y < 70)
-		{
-			e->y = 70;
-			e->dy = -e->dy;
-		}
-
-		if (e->y + e->h > WORLD_HEIGHT)
-		{
-			e->y = WORLD_HEIGHT - e->h;
-			e->dy = -e->dy;
-		}
-
-		// Move entity
-		e->x += e->dx;
-		e->y += e->dy;
-
-		// Example collision logic that enables shotgun ability
-		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
-		{
-			e->health = 0;
-
-			shotgunEnabled = 1;
-			laserEnabled = 0;
-			flameEnabled = 0;
-			shotgunStartTime = SDL_GetTicks();
-			laserDuration = 0;
-			shotgunDuration = 10;
-
-			playSound(SND_POINTS, CH_POINTS);
-		}
-
-		// Check entity health and remove if necessary
-		if (--e->health <= 0)
-		{
-			if (e == stage.shotgunPodTail)
+			// Check if entity is out of bounds and adjust direction
+			if (e->x < 0)
 			{
-				stage.shotgunPodTail = prev;
+				e->x = 0;
+				e->dx = -e->dx;
 			}
 
-			prev->next = e->next;
-			free(e);
-			e = prev;
-		}
+			if (e->x + e->w > WORLD_WIDTH)
+			{
+				e->x = WORLD_WIDTH - e->w;
+				e->dx = -e->dx;
+			}
 
-		prev = e;
+			if (e->y < 70)
+			{
+				e->y = 70;
+				e->dy = -e->dy;
+			}
+
+			if (e->y + e->h > WORLD_HEIGHT)
+			{
+				e->y = WORLD_HEIGHT - e->h;
+				e->dy = -e->dy;
+			}
+
+			// Move entity
+			e->x += e->dx;
+			e->y += e->dy;
+
+			// Example collision logic that enables shotgun ability
+			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+			{
+				e->health = 0;
+
+				shotgunEnabled = 1;
+				laserEnabled = 0;
+				flameEnabled = 0;
+				shotgunStartTime = SDL_GetTicks();
+				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
+				laserDuration = 0;
+				shotgunDuration = 10;
+
+				playSound(SND_POINTS, CH_POINTS);
+			}
+
+			// Check entity health and remove if necessary
+			if (--e->health <= 0)
+			{
+				if (e == stage.shotgunPodTail)
+				{
+					stage.shotgunPodTail = prev;
+				}
+
+				prev->next = e->next;
+				free(e);
+				e = prev;
+			}
+
+			prev = e;
+		}
 	}
 }
 
@@ -1232,78 +1429,83 @@ static void doLaserPods(void)
 	Entity *e, *prev;
 	Uint32 currentTime;
 
-	// Get current time in milliseconds
-	currentTime = SDL_GetTicks();
-
-	// Check if shotgun ability should be disabled due to time limit
-	if (laserEnabled && (currentTime - laserStartTime >= laserDuration * 1000)) // Convert seconds to milliseconds
+	if (stage.gamePaused == false)
 	{
-		laserEnabled = 0;
-		// Optionally perform cleanup or notify the player that shotgun ability expired
-	}
+		// Get current time in milliseconds
+		currentTime = SDL_GetTicks();
 
-	prev = &stage.laserPodHead;
-
-	for (e = stage.laserPodHead.next; e != NULL; e = e->next)
-	{
-		// Check if entity is out of bounds and adjust direction
-		if (e->x < 0)
+		// Check if shotgun ability should be disabled due to time limit
+		if (laserEnabled && (currentTime - laserStartTime - totalPauseDuration >= laserDuration * 1000)) // Convert seconds to milliseconds
 		{
-			e->x = 0;
-			e->dx = -e->dx;
+			laserEnabled = 0;
+			// Optionally perform cleanup or notify the player that laser ability expired
 		}
 
-		if (e->x + e->w > WORLD_WIDTH)
+		prev = &stage.laserPodHead;
+
+		for (e = stage.laserPodHead.next; e != NULL; e = e->next)
 		{
-			e->x = WORLD_WIDTH - e->w;
-			e->dx = -e->dx;
-		}
-
-		if (e->y < 70)
-		{
-			e->y = 70;
-			e->dy = -e->dy;
-		}
-
-		if (e->y + e->h > WORLD_HEIGHT)
-		{
-			e->y = WORLD_HEIGHT - e->h;
-			e->dy = -e->dy;
-		}
-
-		// Move entity
-		e->x += e->dx;
-		e->y += e->dy;
-
-		// Example collision logic that enables shotgun ability
-		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
-		{
-			e->health = 0;
-
-			laserEnabled = 1;
-			shotgunEnabled = 0;
-			flameEnabled = 0;
-			laserStartTime = SDL_GetTicks();
-			shotgunDuration = 0;
-			laserDuration = 10;
-
-			playSound(SND_POINTS, CH_POINTS);
-		}
-
-		// Check entity health and remove if necessary
-		if (--e->health <= 0)
-		{
-			if (e == stage.laserPodTail)
+			// Check if entity is out of bounds and adjust direction
+			if (e->x < 0)
 			{
-				stage.laserPodTail = prev;
+				e->x = 0;
+				e->dx = -e->dx;
 			}
 
-			prev->next = e->next;
-			free(e);
-			e = prev;
-		}
+			if (e->x + e->w > WORLD_WIDTH)
+			{
+				e->x = WORLD_WIDTH - e->w;
+				e->dx = -e->dx;
+			}
 
-		prev = e;
+			if (e->y < 70)
+			{
+				e->y = 70;
+				e->dy = -e->dy;
+			}
+
+			if (e->y + e->h > WORLD_HEIGHT)
+			{
+				e->y = WORLD_HEIGHT - e->h;
+				e->dy = -e->dy;
+			}
+
+			// Move entity
+			e->x += e->dx;
+			e->y += e->dy;
+
+			// Example collision logic that enables laser ability
+			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+			{
+				e->health = 0;
+
+				laserEnabled = 1;
+				shotgunEnabled = 0;
+				flameEnabled = 0;
+				laserStartTime = SDL_GetTicks();
+				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
+				shotgunDuration = 0;
+				flameDuration = 0;
+				laserDuration = 10;
+
+				playSound(SND_POINTS, CH_POINTS);
+			}
+
+			// Check entity health and remove if necessary
+			if (--e->health <= 0)
+			{
+				if (e == stage.laserPodTail)
+				{
+					stage.laserPodTail = prev;
+				}
+
+				prev->next = e->next;
+				free(e);
+				e = prev;
+			}
+
+			prev = e;
+		}
 	}
 }
 
@@ -1312,79 +1514,83 @@ static void doFlamePods(void)
 	Entity *e, *prev;
 	Uint32 currentTime;
 
-	// Get current time in milliseconds
-	currentTime = SDL_GetTicks();
-
-	// Check if shotgun ability should be disabled due to time limit
-	if (flameEnabled && (currentTime - flameStartTime >= flameDuration * 1000)) // Convert seconds to milliseconds
+	if (stage.gamePaused == false)
 	{
-		flameEnabled = 0;
-		// Optionally perform cleanup or notify the player that shotgun ability expired
-	}
+		// Get current time in milliseconds
+		currentTime = SDL_GetTicks();
 
-	prev = &stage.flamePodHead;
-
-	for (e = stage.flamePodHead.next; e != NULL; e = e->next)
-	{
-		// Check if entity is out of bounds and adjust direction
-		if (e->x < 0)
+		// Check if shotgun ability should be disabled due to time limit
+		if (flameEnabled && (currentTime - flameStartTime - totalPauseDuration >= flameDuration * 1000)) // Convert seconds to milliseconds
 		{
-			e->x = 0;
-			e->dx = -e->dx;
+			flameEnabled = 0;
+			// Optionally perform cleanup or notify the player that laser ability expired
 		}
 
-		if (e->x + e->w > WORLD_WIDTH)
+		prev = &stage.flamePodHead;
+
+		for (e = stage.flamePodHead.next; e != NULL; e = e->next)
 		{
-			e->x = WORLD_WIDTH - e->w;
-			e->dx = -e->dx;
-		}
-
-		if (e->y < 70)
-		{
-			e->y = 70;
-			e->dy = -e->dy;
-		}
-
-		if (e->y + e->h > WORLD_HEIGHT)
-		{
-			e->y = WORLD_HEIGHT - e->h;
-			e->dy = -e->dy;
-		}
-
-		// Move entity
-		e->x += e->dx;
-		e->y += e->dy;
-
-		// Example collision logic that enables shotgun ability
-		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
-		{
-			e->health = 0;
-
-			flameEnabled = 1;
-			laserEnabled = 0;
-			shotgunEnabled = 0;
-			flameStartTime = SDL_GetTicks();
-			shotgunDuration = 0;
-			laserDuration = 0;
-			flameDuration = 10;
-
-			playSound(SND_POINTS, CH_POINTS);
-		}
-
-		// Check entity health and remove if necessary
-		if (--e->health <= 0)
-		{
-			if (e == stage.flamePodTail)
+			// Check if entity is out of bounds and adjust direction
+			if (e->x < 0)
 			{
-				stage.flamePodTail = prev;
+				e->x = 0;
+				e->dx = -e->dx;
 			}
 
-			prev->next = e->next;
-			free(e);
-			e = prev;
-		}
+			if (e->x + e->w > WORLD_WIDTH)
+			{
+				e->x = WORLD_WIDTH - e->w;
+				e->dx = -e->dx;
+			}
 
-		prev = e;
+			if (e->y < 70)
+			{
+				e->y = 70;
+				e->dy = -e->dy;
+			}
+
+			if (e->y + e->h > WORLD_HEIGHT)
+			{
+				e->y = WORLD_HEIGHT - e->h;
+				e->dy = -e->dy;
+			}
+
+			// Move entity
+			e->x += e->dx;
+			e->y += e->dy;
+
+			// Example collision logic that enables flame ability
+			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+			{
+				e->health = 0;
+
+				flameEnabled = 1;
+				shotgunEnabled = 0;
+				laserEnabled = 0;
+				flameStartTime = SDL_GetTicks();
+				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
+				shotgunDuration = 0;
+				laserDuration = 0;
+				flameDuration = 10;
+
+				playSound(SND_POINTS, CH_POINTS);
+			}
+
+			// Check entity health and remove if necessary
+			if (--e->health <= 0)
+			{
+				if (e == stage.flamePodTail)
+				{
+					stage.flamePodTail = prev;
+				}
+
+				prev->next = e->next;
+				free(e);
+				e = prev;
+			}
+
+			prev = e;
+		}
 	}
 }
 
@@ -1392,62 +1598,66 @@ static void doHealthPods(void)
 {
 	Entity *e, *prev;
 
-	prev = &stage.healthPodHead;
-
-	for (e = stage.healthPodHead.next; e != NULL; e = e->next)
+	if (stage.gamePaused == false)
 	{
-		// Check if entity is out of bounds and adjust direction
-		if (e->x < 0)
+
+		prev = &stage.healthPodHead;
+
+		for (e = stage.healthPodHead.next; e != NULL; e = e->next)
 		{
-			e->x = 0;
-			e->dx = -e->dx;
-		}
-
-		if (e->x + e->w > WORLD_WIDTH)
-		{
-			e->x = WORLD_WIDTH - e->w;
-			e->dx = -e->dx;
-		}
-
-		if (e->y < 70)
-		{
-			e->y = 70;
-			e->dy = -e->dy;
-		}
-
-		if (e->y + e->h > WORLD_HEIGHT)
-		{
-			e->y = WORLD_HEIGHT - e->h;
-			e->dy = -e->dy;
-		}
-
-		// Move entity
-		e->x += e->dx;
-		e->y += e->dy;
-
-		// If you collide with the pod you get health
-		if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
-		{
-			e->health = 0; // Delete the health pod
-			player->health += 200;
-
-			playSound(SND_POINTS, CH_POINTS);
-		}
-
-		// Check entity health and remove if necessary
-		if (--e->health <= 0)
-		{
-			if (e == stage.healthPodTail)
+			// Check if entity is out of bounds and adjust direction
+			if (e->x < 0)
 			{
-				stage.healthPodTail = prev;
+				e->x = 0;
+				e->dx = -e->dx;
 			}
 
-			prev->next = e->next;
-			free(e);
-			e = prev;
-		}
+			if (e->x + e->w > WORLD_WIDTH)
+			{
+				e->x = WORLD_WIDTH - e->w;
+				e->dx = -e->dx;
+			}
 
-		prev = e;
+			if (e->y < 70)
+			{
+				e->y = 70;
+				e->dy = -e->dy;
+			}
+
+			if (e->y + e->h > WORLD_HEIGHT)
+			{
+				e->y = WORLD_HEIGHT - e->h;
+				e->dy = -e->dy;
+			}
+
+			// Move entity
+			e->x += e->dx;
+			e->y += e->dy;
+
+			// If you collide with the pod you get health
+			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+			{
+				e->health = 0; // Delete the health pod
+				player->health += 200;
+
+				playSound(SND_POINTS, CH_POINTS);
+			}
+
+			// Check entity health and remove if necessary
+			if (--e->health <= 0)
+			{
+				if (e == stage.healthPodTail)
+				{
+					stage.healthPodTail = prev;
+				}
+
+				prev->next = e->next;
+				free(e);
+				e = prev;
+			}
+
+			prev = e;
+		}
 	}
 }
 
@@ -1864,10 +2074,25 @@ static void drawHud(void)
 
 		if (shotgunEnabled == 1)
 		{
-			// Calculate remaining time percentage for shotgun ability (if needed)
-			Uint32 currentTime = SDL_GetTicks();
-			Uint32 elapsedShotgunTime = currentTime - shotgunStartTime;
-			float remainingTimePercentage = 1.0f - (float)elapsedShotgunTime / (shotgunDuration * 1000); // Convert to seconds
+			Uint32 currentTime;
+			Uint32 elapsedShotgunTime;
+			float remainingTimePercentage;
+
+			// Get current time in milliseconds
+			currentTime = SDL_GetTicks();
+
+			if (!stage.gamePaused)
+			{
+				// Calculate elapsed time only when game is not paused
+				elapsedShotgunTime = currentTime - shotgunStartTime - totalPauseDuration;
+			}
+			else
+			{
+				// When the game is paused, use the last calculated elapsed time
+				elapsedShotgunTime = pauseStartTime - shotgunStartTime - totalPauseDuration;
+			}
+
+			remainingTimePercentage = 1.0f - (float)elapsedShotgunTime / (shotgunDuration * 1000);
 
 			// Clamp the percentage to [0, 1] range
 			if (remainingTimePercentage < 0)
@@ -1881,11 +2106,28 @@ static void drawHud(void)
 			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
 			SDL_RenderFillRect(app.renderer, &timerBarRect);
 		}
+
 		else if (laserEnabled == 1)
-		{ // Calculate remaining time percentage for shotgun ability (if needed)
-			Uint32 currentTime = SDL_GetTicks();
-			Uint32 elapsedLaserTime = currentTime - laserStartTime;
-			float remainingTimePercentage = 1.0f - (float)elapsedLaserTime / (laserDuration * 1000); // Convert to seconds
+		{
+			Uint32 currentTime;
+			Uint32 elapsedLaserTime;
+			float remainingTimePercentage;
+
+			// Get current time in milliseconds
+			currentTime = SDL_GetTicks();
+
+			if (!stage.gamePaused)
+			{
+				// Calculate elapsed time only when game is not paused
+				elapsedLaserTime = currentTime - laserStartTime - totalPauseDuration;
+			}
+			else
+			{
+				// When the game is paused, use the last calculated elapsed time
+				elapsedLaserTime = pauseStartTime - laserStartTime - totalPauseDuration;
+			}
+
+			remainingTimePercentage = 1.0f - (float)elapsedLaserTime / (laserDuration * 1000);
 
 			// Clamp the percentage to [0, 1] range
 			if (remainingTimePercentage < 0)
@@ -1896,14 +2138,31 @@ static void drawHud(void)
 			// Draw the timer bar for shotgun ability
 			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
 			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
-			SDL_SetRenderDrawColor(app.renderer, 100, 100, 255, 255); // Blue color for timer bar
+			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
 			SDL_RenderFillRect(app.renderer, &timerBarRect);
 		}
+
 		else if (flameEnabled == 1)
-		{ // Calculate remaining time percentage for shotgun ability (if needed)
-			Uint32 currentTime = SDL_GetTicks();
-			Uint32 elapsedFLameTime = currentTime - flameStartTime;
-			float remainingTimePercentage = 1.0f - (float)elapsedFLameTime / (flameDuration * 1000); // Convert to seconds
+		{
+			Uint32 currentTime;
+			Uint32 elapsedFlameTime;
+			float remainingTimePercentage;
+
+			// Get current time in milliseconds
+			currentTime = SDL_GetTicks();
+
+			if (!stage.gamePaused)
+			{
+				// Calculate elapsed time only when game is not paused
+				elapsedFlameTime = currentTime - flameStartTime - totalPauseDuration;
+			}
+			else
+			{
+				// When the game is paused, use the last calculated elapsed time
+				elapsedFlameTime = pauseStartTime - flameStartTime - totalPauseDuration;
+			}
+
+			remainingTimePercentage = 1.0f - (float)elapsedFlameTime / (flameDuration * 1000);
 
 			// Clamp the percentage to [0, 1] range
 			if (remainingTimePercentage < 0)
@@ -1914,7 +2173,7 @@ static void drawHud(void)
 			// Draw the timer bar for shotgun ability
 			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
 			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
-			SDL_SetRenderDrawColor(app.renderer, 255, 0, 0, 255); // Blue color for timer bar
+			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
 			SDL_RenderFillRect(app.renderer, &timerBarRect);
 		}
 
@@ -1935,14 +2194,14 @@ static void drawHud(void)
 		bool boostAvailable = (player->boostTimer <= 0 && player->boostCooldown <= 0);
 		if (boostAvailable)
 		{
-			// Boost is active, draw yellow bar
+			// Boost is available, draw yellow bar
 			SDL_Rect boostBarRect = {BOOST_BAR_X, BOOST_BAR_Y, BOOST_BAR_WIDTH, BOOST_BAR_HEIGHT};
 			SDL_SetRenderDrawColor(app.renderer, 255, 255, 0, 255); // Yellow color for boost bar
 			SDL_RenderFillRect(app.renderer, &boostBarRect);
 		}
 		else if (player->boostTimer > 0)
 		{
-			// Boost is active, draw yellow bar
+			// Boost is active, draw yellow bar decreasing
 			int boostBarWidth = (int)(BOOST_BAR_WIDTH * boostPercentage);
 			SDL_Rect boostBarRect = {BOOST_BAR_X, BOOST_BAR_Y, boostBarWidth, BOOST_BAR_HEIGHT};
 			SDL_SetRenderDrawColor(app.renderer, 255, 255, 0, 255); // Yellow color for boost bar
@@ -1950,8 +2209,16 @@ static void drawHud(void)
 		}
 		else if (player->boostCooldown > 0)
 		{
+			float cooldownPercentage;
 			// Boost is on cooldown, draw grey bar with charging effect
-			float cooldownPercentage = 1.0f - ((float)player->boostCooldown / 180.0f); // Cooldown is 3 seconds (180 frames)
+			if (systemsDown == false)
+			{
+				cooldownPercentage = 1.0f - ((float)player->boostCooldown / 180.0f);
+			} // Cooldown is 3 seconds (180 frames)
+			else if (systemsDown == true)
+			{
+				cooldownPercentage = 1.0f - ((float)player->boostCooldown / 300.0f);
+			} // Cooldown is 5 seconds (300 frames)
 			int cooldownBarWidth = (int)(BOOST_BAR_WIDTH * cooldownPercentage);
 			SDL_Rect cooldownBarRect = {BOOST_BAR_X, BOOST_BAR_Y, cooldownBarWidth, BOOST_BAR_HEIGHT};
 			SDL_SetRenderDrawColor(app.renderer, 128, 128, 128, 255); // Light grey color for cooldown bar
@@ -1976,6 +2243,26 @@ static void toggleBoost(bool activate)
 		PLAYER_SPEED = 4;			 // Reset player speed to base speed
 		player->boostActive = false; // Reset boost active flag
 		hyperDriveSoundPlayed = false;
+	}
+}
+
+static void toggleSystemsDown(bool activate)
+{
+	if (activate)
+	{
+		if (player->systemsCooldown <= 0) // Check if boost is not on cooldown
+		{
+			player->systemsTimer = 300; // Set boost timer to 5 seconds (assuming 60 frames per second)
+			player->boostTimer = 0;
+			player->boostActive = false;
+			systemsDown = true; // Set boost active flag
+		}
+	}
+	else
+	{
+		PLAYER_SPEED = 4; // Reset player speed to base speed
+		hyperDriveSoundPlayed = false;
+		systemsDown = false; // Reset boost active flag
 	}
 }
 

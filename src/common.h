@@ -1,4 +1,5 @@
 #include <SDL2/SDL_gamecontroller.h>
+#include <SDL2/SDL_mixer.h>
 #include "ctype.h"
 #include <time.h>
 #include "defs.h"

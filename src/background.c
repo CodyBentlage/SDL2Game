@@ -277,7 +277,8 @@ void initBackground(void)
 		{
 			SDL_DestroyTexture(textures[i]);
 		}
-	} else if (purpleBackground == true)
+	}
+	else if (purpleBackground == true)
 	{
 		srand(time(NULL)); // Seed the random number generator
 
@@ -371,13 +372,16 @@ void doStarfield(void)
 {
 	int i;
 
-	for (i = 0; i < MAX_STARS; i++)
+	if (stage.gamePaused == false)
 	{
-		stars[i].x -= stars[i].speed;
-
-		if (stars[i].x < 0)
+		for (i = 0; i < MAX_STARS; i++)
 		{
-			stars[i].x = SCREEN_WIDTH + stars[i].x;
+			stars[i].x -= stars[i].speed;
+
+			if (stars[i].x < 0)
+			{
+				stars[i].x = SCREEN_WIDTH + stars[i].x;
+			}
 		}
 	}
 }

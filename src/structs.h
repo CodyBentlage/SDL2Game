@@ -45,6 +45,8 @@ struct Entity
 	int reload;
 	int boostTimer;
 	int boostCooldown;
+	int systemsTimer;
+	int systemsCooldown;
 	int side;
 	SDL_Texture *texture;
 	Entity *next;
@@ -60,6 +62,7 @@ struct Explosion
 	float dx;
 	float dy;
 	int r, g, b, a;
+	Uint32 creationTime;
 	Explosion *next;
 };
 
@@ -89,6 +92,7 @@ typedef struct
 	int currentEnemyCount;
 	int cameraX;
 	int cameraY;
+	bool gamePaused;
 } Stage;
 
 typedef struct

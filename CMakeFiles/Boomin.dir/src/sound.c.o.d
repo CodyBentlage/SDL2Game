@@ -1,7 +1,9 @@
 CMakeFiles/Boomin.dir/src/sound.c.o: \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/sound.c \
- /usr/include/stdc-predef.h /usr/include/SDL2/SDL_mixer.h \
- /usr/include/SDL2/SDL_stdinc.h /usr/include/SDL2/SDL_config.h \
+ /usr/include/stdc-predef.h \
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
+ /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_stdinc.h \
+ /usr/include/SDL2/SDL_config.h \
  /usr/include/x86_64-linux-gnu/SDL2/_real_SDL_config.h \
  /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/begin_code.h \
  /usr/include/SDL2/close_code.h /usr/include/x86_64-linux-gnu/sys/types.h \
@@ -68,15 +70,13 @@ CMakeFiles/Boomin.dir/src/sound.c.o: \
  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
- /usr/include/SDL2/SDL_rwops.h /usr/include/SDL2/SDL_error.h \
- /usr/include/SDL2/SDL_audio.h /usr/include/SDL2/SDL_endian.h \
- /usr/include/SDL2/SDL_mutex.h /usr/include/SDL2/SDL_thread.h \
- /usr/include/SDL2/SDL_atomic.h /usr/include/SDL2/SDL_platform.h \
- /usr/include/SDL2/SDL_version.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
- /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_sensor.h \
- /usr/include/SDL2/SDL_joystick.h /usr/include/time.h \
- /usr/include/x86_64-linux-gnu/bits/time.h \
+ /usr/include/SDL2/SDL_error.h /usr/include/SDL2/SDL_rwops.h \
+ /usr/include/SDL2/SDL_sensor.h /usr/include/SDL2/SDL_joystick.h \
+ /usr/include/SDL2/SDL_mixer.h /usr/include/SDL2/SDL_audio.h \
+ /usr/include/SDL2/SDL_endian.h /usr/include/SDL2/SDL_mutex.h \
+ /usr/include/SDL2/SDL_thread.h /usr/include/SDL2/SDL_atomic.h \
+ /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/SDL_version.h \
+ /usr/include/time.h /usr/include/x86_64-linux-gnu/bits/time.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h \

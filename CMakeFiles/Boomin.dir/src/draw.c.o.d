@@ -176,8 +176,8 @@ CMakeFiles/Boomin.dir/src/draw.c.o: \
  /usr/include/SDL2/SDL_timer.h /usr/include/SDL2/SDL_version.h \
  /usr/include/SDL2/SDL_locale.h /usr/include/SDL2/SDL_misc.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/common.h \
- /usr/include/SDL2/SDL_gamecontroller.h /usr/include/time.h \
- /usr/include/x86_64-linux-gnu/bits/time.h \
+ /usr/include/SDL2/SDL_gamecontroller.h /usr/include/SDL2/SDL_mixer.h \
+ /usr/include/time.h /usr/include/x86_64-linux-gnu/bits/time.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h \

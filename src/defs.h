@@ -58,8 +58,9 @@
 #define ABILITY_BAR_HEIGHT 5
 
 #define HITBOX_SIZE 10.0f
-#define COLLISION_COOLDOWN_MS 5000 // Five-second cooldown
 #define COLLISION_RESTITUTION 0.1f
+
+#define HIGHSCORE_FILE "highscores.txt"
 
 enum
 {
@@ -69,7 +70,9 @@ enum
 	CH_ALIEN_FIRE,
 	CH_POINTS,
 	CH_HYPER_DRIVE,
-	CH_SHIP_DOWN
+	CH_SHIP_DOWN,
+	CH_ALIEN_DIES,
+	CH_PLAYER_DIES
 };
 
 enum
