@@ -45,6 +45,15 @@ void playSound(int id, int channel)
 	Mix_PlayChannel(channel, sounds[id], 0);
 }
 
+void playBeamSound(int id, int channel, bool loop)
+{
+    if (loop) {
+        Mix_PlayChannel(channel, sounds[id], -1); // -1 indicates looping indefinitely
+    } else {
+        Mix_PlayChannel(channel, sounds[id], 0); // 0 plays the sound once
+    }
+}
+
 static void loadSounds(void)
 {
 	sounds[SND_PLAYER_FIRE] = Mix_LoadWAV("sound/334227__jradcoolness__laser.ogg");
@@ -56,14 +65,16 @@ static void loadSounds(void)
 	sounds[SND_POINTS] = Mix_LoadWAV("sound/342749__rhodesmas__notification-01.ogg");
 	sounds[SND_HYPER_DRIVE] = Mix_LoadWAV("sound/hyperDrive.ogg");
 	sounds[SND_SHIP_DOWN] = Mix_LoadWAV("sound/shipDown.ogg");
+	sounds[SND_LASER_BEAM] = Mix_LoadWAV("sound/laserBeam.ogg");
 
 	// Set individual volume levels for each sound
 	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE], 20);
 	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE_LASER], 20);
-	Mix_VolumeChunk(sounds[SND_ALIEN_FIRE], 20);
-	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 20);
+	Mix_VolumeChunk(sounds[SND_LASER_BEAM], 30);
+	Mix_VolumeChunk(sounds[SND_ALIEN_FIRE], 40);
+	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 15);
 	Mix_VolumeChunk(sounds[SND_SHIP_HIT], 20);
-	Mix_VolumeChunk(sounds[SND_ALIEN_DIE], 20);
+	Mix_VolumeChunk(sounds[SND_ALIEN_DIE], 15);
 	Mix_VolumeChunk(sounds[SND_POINTS], 20);
 	Mix_VolumeChunk(sounds[SND_HYPER_DRIVE], 128);
 	Mix_VolumeChunk(sounds[SND_SHIP_DOWN], 128);

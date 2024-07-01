@@ -1,6 +1,7 @@
 #include <stdbool.h>
 
 typedef struct Entity Entity;
+typedef struct SpaceBeam Beam;
 typedef struct Explosion Explosion;
 typedef struct Debris Debris;
 typedef struct Texture Texture;
@@ -48,11 +49,31 @@ struct Entity
 	int systemsTimer;
 	int systemsCooldown;
 	int side;
-	SDL_Texture *texture;
-	Entity *next;
 	float angle;
 	float maxHealth;
 	bool boostActive;
+	int invincibilityFrames;
+	SDL_Texture *texture;
+	Entity *next;
+};
+
+struct SpaceBeam
+{
+	float x;
+	float y;
+	int w;
+	int h;
+	float dx;
+	float dy;
+	int health;
+	int reload;
+	int side;
+	float angle;
+	float maxHealth;
+	bool boostActive;
+	int r, g, b, a;
+	SDL_Texture *beamTexture;
+	Beam *next;
 };
 
 struct Explosion
@@ -82,9 +103,11 @@ typedef struct
 {
 	Entity fighterHead, *fighterTail;
 	Entity bulletHead, *bulletTail;
+	Beam beamHead, *beamTail;
 	Entity shotgunPodHead, *shotgunPodTail;
 	Entity laserPodHead, *laserPodTail;
 	Entity flamePodHead, *flamePodTail;
+	Entity spaceBeamPodHead, *spaceBeamPodTail;
 	Entity healthPodHead, *healthPodTail;
 	Explosion explosionHead, *explosionTail;
 	Debris debrisHead, *debrisTail;
