@@ -333,11 +333,10 @@ static void logic(void)
 
 void doPlayer(void)
 {
-	// Systems logic
 	if (player != NULL)
 	{
 		if (stage.gamePaused == false)
-		{
+		{ // Systems down logic
 			if (player->systemsTimer > 0)
 			{
 				player->systemsTimer--;
@@ -392,7 +391,7 @@ void doPlayer(void)
 			if (stage.gamePaused == false)
 			{
 				// Handle game controller input
-				if (systemsDown == false)
+				if ((systemsDown == false) && (!player->boostActive))
 				{
 					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
 					{
@@ -418,31 +417,23 @@ void doPlayer(void)
 						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 					}
 				}
+				// Calculate aiming direction
+				aim_x = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX);
+				aim_y = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY);
+				aim_threshold = 8000.0f;
 
-				if (!player->boostActive)
+				if (aim_x * aim_x + aim_y * aim_y > aim_threshold * aim_threshold)
 				{
-					// Calculate aiming direction
-					aim_x = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX);
-					aim_y = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY);
-					aim_threshold = 8000.0f;
-
-					if (aim_x * aim_x + aim_y * aim_y > aim_threshold * aim_threshold)
-					{
-						aim_angle = atan2f((float)aim_y, (float)aim_x);
-					}
+					aim_angle = atan2f((float)aim_y, (float)aim_x);
 				}
-				else if (player->boostActive)
+
+				if (player->boostActive)
 				{
-					// Calculate aiming direction
-					aim_x = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX);
-					aim_y = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY);
-					aim_threshold = 8000.0f;
-
-					if (aim_x * aim_x + aim_y * aim_y > aim_threshold * aim_threshold)
-					{
-						aim_angle = atan2f((float)aim_y, (float)aim_x);
-					}
+					// Move the player in the direction of the mouse with boosted speed
+					player->dx = cosf(aim_angle) * PLAYER_SPEED;
+					player->dy = sinf(aim_angle) * PLAYER_SPEED;
 				}
+
 				if (SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) && player->reload <= 0)
 				{
 
@@ -533,26 +524,29 @@ void doPlayer(void)
 			if (stage.gamePaused == false)
 			{
 				// Handle keyboard and mouse input
-				if (app.keyboard[SDL_SCANCODE_W])
+				if (!player->boostActive)
 				{
-					player->dy = -PLAYER_SPEED;
-				}
+					if (app.keyboard[SDL_SCANCODE_W])
+					{
+						player->dy = -PLAYER_SPEED;
+					}
 
-				if (app.keyboard[SDL_SCANCODE_A])
-				{
-					player->dx = -PLAYER_SPEED;
-				}
+					if (app.keyboard[SDL_SCANCODE_A])
+					{
+						player->dx = -PLAYER_SPEED;
+					}
 
-				if (app.keyboard[SDL_SCANCODE_S])
-				{
-					player->dy = PLAYER_SPEED;
-				}
+					if (app.keyboard[SDL_SCANCODE_S])
+					{
+						player->dy = PLAYER_SPEED;
+					}
 
-				if (app.keyboard[SDL_SCANCODE_D])
-				{
-					player->dx = PLAYER_SPEED;
+					if (app.keyboard[SDL_SCANCODE_D])
+					{
+						player->dx = PLAYER_SPEED;
+					}
 				}
-				if (app.keyboard[SDL_SCANCODE_LSHIFT])
+				if (app.mouse_buttons[SDL_BUTTON_RIGHT])
 				{
 					if (player->boostTimer <= 0 && player->boostCooldown <= 0)
 					{
@@ -566,6 +560,13 @@ void doPlayer(void)
 
 				// Calculate aim_angle
 				aim_angle = atan2f(aim_y, aim_x);
+
+				if (player->boostActive)
+				{
+					// Move the player in the direction of the mouse with boosted speed
+					player->dx = cosf(aim_angle) * PLAYER_SPEED;
+					player->dy = sinf(aim_angle) * PLAYER_SPEED;
+				}
 
 				if (app.mouse_buttons[SDL_BUTTON_LEFT] && player->reload <= 0)
 				{
@@ -590,23 +591,59 @@ void doPlayer(void)
 						playSound(SND_PLAYER_FIRE, CH_PLAYER);
 					}
 				}
-				if (app.keyboard[SDL_SCANCODE_ESCAPE])
+			}
+			if (app.keyboard[SDL_SCANCODE_ESCAPE])
+			{
+				// Only toggle the pause state if the button wasn't pressed in the previous frame
+				if (prevStartButtonState == 0)
 				{
-					// Only toggle the pause state if the button wasn't pressed in the previous frame
-					if (prevStartButtonState == 0)
+					// Toggle gamePaused state
+					stage.gamePaused = !stage.gamePaused;
+
+					// Handle pausing sounds
+					if (stage.gamePaused == true)
 					{
-						// Toggle gamePaused state
-						stage.gamePaused = !stage.gamePaused;
+						Mix_Pause(CH_HYPER_DRIVE);
+						Mix_Pause(CH_ANY);
+						Mix_Pause(CH_PLAYER);
+						Mix_Pause(CH_PLAYER_FIRE_LASER);
+						Mix_Pause(CH_ALIEN_FIRE);
+						Mix_Pause(CH_POINTS);
+						Mix_Pause(CH_SHIP_DOWN);
+						pauseMusic();
+					}
+					else if (stage.gamePaused == false)
+					{
+						Mix_Resume(CH_HYPER_DRIVE);
+						Mix_Resume(CH_ANY);
+						Mix_Resume(CH_PLAYER);
+						Mix_Resume(CH_PLAYER_FIRE_LASER);
+						Mix_Resume(CH_ALIEN_FIRE);
+						Mix_Resume(CH_POINTS);
+						Mix_Resume(CH_SHIP_DOWN);
+						resumeMusic();
 					}
 
-					// Update the previous button state to indicate it's pressed
-					prevStartButtonState = 1;
+					if (stage.gamePaused)
+					{
+						// Record when the game was paused
+						pauseStartTime = SDL_GetTicks();
+					}
+					else
+					{
+						// Calculate total pause duration
+						lastPauseTime = SDL_GetTicks() - pauseStartTime;
+						totalPauseDuration += lastPauseTime;
+					}
 				}
-				else
-				{
-					// Update the previous button state to indicate it's not pressed
-					prevStartButtonState = 0;
-				}
+
+				// Update the previous button state to indicate it's pressed
+				prevStartButtonState = 1;
+			}
+			else
+			{
+				// Update the previous button state to indicate it's not pressed
+				prevStartButtonState = 0;
 			}
 		}
 	}
@@ -796,15 +833,19 @@ static void doEnemies(void)
 	Entity *e;
 	if (stage.gamePaused == false)
 	{
-		if (player != NULL)
+		for (e = stage.fighterHead.next; e != NULL; e = e->next)
 		{
-			for (e = stage.fighterHead.next; e != NULL; e = e->next)
+			if (e != player) // Ensure the player's position isn't messed with
 			{
-				if (e != player) // Ensure the player's position isn't messed with
+				float dx, dy;
+				float desiredAngle;
+
+				if (player != NULL && player->health > 0)
 				{
 					// Calculate direction to the player
-					float dx = player->x - e->x;
-					float dy = player->y - e->y;
+					dx = player->x - e->x;
+					dy = player->y - e->y;
+
 					float distance = sqrt(dx * dx + dy * dy);
 
 					// Normalize direction vector and set enemy speed
@@ -817,18 +858,59 @@ static void doEnemies(void)
 					e->x += dx * ENEMY_SPEED;
 					e->y += dy * ENEMY_SPEED;
 
-					// Calculate and store the angle of movement
-					e->angle = atan2(dy, dx) + M_PI;
-					// Use atan2 to get the angle in radians
+					// Calculate the desired angle towards the player
+					desiredAngle = atan2(dy, dx) + M_PI;
+				}
+				else
+				{
+					// Move left when the player's health is 0
+					dx = -1.0; // Move left
+					dy = 0.0;
 
-					// Restrict enemies to within world boundaries
+					e->x += dx * ENEMY_SPEED;
+					e->y += dy * ENEMY_SPEED;
+
+					// Set the desired angle to face left
+					desiredAngle = 2 * (M_PI);
+				}
+
+				// Gradually rotate towards the desired angle
+				float angleDiff = desiredAngle - e->angle;
+
+				// Ensure the angle difference is within the range [-PI, PI]
+				if (angleDiff > M_PI)
+				{
+					angleDiff -= 2 * M_PI;
+				}
+				if (angleDiff < -M_PI)
+				{
+					angleDiff += 2 * M_PI;
+				}
+
+				// Rotate the enemy towards the desired angle
+				if (angleDiff > TURN_SPEED)
+				{
+					e->angle += TURN_SPEED;
+				}
+				else if (angleDiff < -TURN_SPEED)
+				{
+					e->angle -= TURN_SPEED;
+				}
+				else
+				{
+					e->angle = desiredAngle;
+				}
+
+				// Restrict enemies to within world boundaries
+				if (e->y < 70)
+				{
+					e->y = 70;
+				}
+				if (player != NULL && player->health > 0)
+				{
 					if (e->x < 10)
 					{
 						e->x = 10;
-					}
-					if (e->y < 70)
-					{
-						e->y = 70;
 					}
 					if (e->x > WORLD_WIDTH - (e->w + 20))
 					{
@@ -838,13 +920,13 @@ static void doEnemies(void)
 					{
 						e->y = WORLD_HEIGHT - (e->h + 20);
 					}
+				}
 
-					// Fire bullets
-					if (player != NULL && --e->reload <= 0)
-					{
-						fireAlienBullet(e);						  // Example function to fire bullets
-						playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
-					}
+				// Fire bullets
+				if (player != NULL && player->health > 0 && --e->reload <= 0)
+				{
+					fireAlienBullet(e);						  // Example function to fire bullets
+					playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
 				}
 			}
 		}
@@ -1039,8 +1121,11 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 	e2->dy -= impulse / e2Mass * dy;
 
 	// Adjust health
-	e1->health -= 25;
-	e2->health -= 25;
+	if (player != NULL && player->health > 0)
+	{
+		e1->health -= 25;
+		e2->health -= 25;
+	}
 
 	// Play collision sound
 	playSound(SND_SHIP_HIT, CH_ANY);

@@ -17,6 +17,7 @@
 #define FPS 60
 
 #define ENEMY_SPEED 3
+#define TURN_SPEED 0.05
 
 #define PLAYER_BULLET_SPEED 20
 #define LASER_SPEED 40
