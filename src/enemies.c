@@ -13,8 +13,10 @@ static int enemySpawnTimer;
 void spawnEnemyTheCube(void)
 {
     Entity *enemy;
-        enemyTheCube = loadTexture("gfx/enemyTheCube.png");
+    enemyTheCube = loadTexture("gfx/enemyTheCube.png");
 
+    if (stage.currentEnemyCount < 500)
+    {
         if (--enemySpawnTimer <= 0)
         {
             stage.currentEnemyCount++;
@@ -76,14 +78,16 @@ void spawnEnemyTheCube(void)
             enemySpawnTimer = 1 + (rand() % FPS);
         }
     }
-
+}
 
 void spawnEnemyFighters(void)
 {
     Entity *enemy;
 
-        enemyFighterTexture = loadTexture("gfx/enemyFighter.png");
+    enemyFighterTexture = loadTexture("gfx/enemyFighter.png");
 
+    if (stage.currentEnemyCount < 500)
+    {
         if (--enemySpawnTimer <= 0)
         {
             stage.currentEnemyCount++;
@@ -145,14 +149,16 @@ void spawnEnemyFighters(void)
             enemySpawnTimer = 20 + (rand() % FPS);
         }
     }
-
+}
 
 void spawnEnemyMosquitos(void)
 {
     Entity *enemy;
 
-        enemyMosquitoTexture = loadTexture("gfx/enemyMosquito.png");
+    enemyMosquitoTexture = loadTexture("gfx/enemyMosquito.png");
 
+    if (stage.currentEnemyCount < 550)
+    {
         if (--enemySpawnTimer <= 0)
         {
             stage.currentEnemyCount++;
@@ -214,3 +220,4 @@ void spawnEnemyMosquitos(void)
             enemySpawnTimer = 70 + (rand() % FPS);
         }
     }
+}

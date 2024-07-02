@@ -62,6 +62,10 @@
 #define HITBOX_SIZE 10.0f
 #define COLLISION_RESTITUTION 0.1f
 
+#define BASE_CROSSHAIR_DISTANCE 75
+#define MAX_CROSSHAIR_DISTANCE 125
+#define CROSSHAIR_STEP 1
+
 #define HIGHSCORE_FILE "highscores.txt"
 
 enum

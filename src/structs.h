@@ -102,6 +102,7 @@ struct Debris
 typedef struct
 {
 	Entity fighterHead, *fighterTail;
+	Entity crossHairHead, *crossHairTail;
 	Entity bulletHead, *bulletTail;
 	Beam beamHead, *beamTail;
 	Entity shotgunPodHead, *shotgunPodTail;

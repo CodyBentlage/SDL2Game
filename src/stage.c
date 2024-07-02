@@ -15,7 +15,13 @@ extern Stage stage;
 static void logic(void);
 static void draw(void);
 
+static void initiateScreenShake(int duration, int magnitude);
+static void updateScreenShake(void);
+static void drawEnemyBossMessage(int x, int y, int r, int g, int b, char *text);
+
 static void initPlayer(void);
+static void initCrossHair(void);
+static void drawCrosshair(void);
 static void doPlayer(void);
 
 static void fireBullet(float angle);
@@ -38,6 +44,7 @@ static void doEnemies(void);
 static void fireAlienBullet(Entity *e);
 
 static void clipPlayer(void);
+static void clipCrosshair(void);
 
 static void resetStage(void);
 
@@ -50,6 +57,10 @@ static void doDebris(void);
 static void drawDebris(void);
 
 static void drawHud(void);
+static void drawPauseMenu(void);
+
+static void restartGame(void);
+static void quitGame(void);
 
 static void doShotgunPods(void);
 static void addShotgunPods(int x, int y);
@@ -75,6 +86,7 @@ static void toggleBoost(bool activate);
 static void toggleSystemsDown(bool activate);
 
 static Entity *player;
+static Entity *crossHair;
 static SDL_Texture *bulletTexture;
 static SDL_Texture *laserTexture;
 static SDL_Texture *flameTexture;
@@ -82,6 +94,7 @@ static SDL_Texture *spaceBeamTexture;
 static SDL_Texture *enemyTexture;
 static SDL_Texture *alienBulletTexture;
 static SDL_Texture *playerTexture;
+static SDL_Texture *crossHairTexture;
 static SDL_Texture *explosionTexture;
 static SDL_Texture *pointsTexture;
 static SDL_Texture *laserPodTexture;
@@ -118,6 +131,7 @@ static int spaceBeamDuration = 0;
 static Uint32 spaceBeamStartTime = 0;
 
 static float PLAYER_SPEED = 4;
+static float CROSSHAIR_SPEED = 10;
 static float aim_angle = 0.0f;
 
 static bool hyperDriveSoundPlayed = false;
@@ -128,13 +142,27 @@ static bool systemsDown = false;
 
 static int flameGifFrame = 0;
 
-static int prevStartButtonState = 0;
+static int prevStartButtonState;
+static int prevRightShoulderState;
+
+static bool playerQuit;
 
 static int flameDamage = 0;
+
+static int crosshairDistance;
+static bool autoAim;
+static bool playerWantsAutoAim;
 
 Uint32 pauseStartTime = 0;
 Uint32 totalPauseDuration = 0;
 Uint32 lastPauseTime = 0;
+
+static int shakeDuration = 0;
+static int shakeMagnitude = 0;
+
+static bool bossMessageShown;
+static int bossMessageDuration;
+static int secondBossMessageDuration;
 
 void initStage(void)
 {
@@ -148,6 +176,7 @@ void initStage(void)
 	enemyTexture = loadTexture("gfx/enemy.png");
 	alienBulletTexture = loadTexture("gfx/alienBullet.png");
 	playerTexture = loadTexture("gfx/player.png");
+	crossHairTexture = loadTexture("gfx/crosshair.png");
 	explosionTexture = loadTexture("gfx/explosion.png");
 	pointsTexture = loadTexture("gfx/points.png");
 	laserPodTexture = loadTexture("gfx/laserPod.png");
@@ -171,11 +200,13 @@ void initStage(void)
 	stage.cameraY = 0;
 
 	initPlayer();
+	initCrossHair();
 
 	enemySpawnTimer = 0;
 
 	stageResetTimer = FPS * 3;
 
+	spaceBeamDuration = 0;
 	shotgunDuration = 0;
 	laserDuration = 0;
 	flameDuration = 0;
@@ -189,12 +220,23 @@ void initStage(void)
 	PLAYER_SPEED = 4;
 
 	prevStartButtonState = 0;
+	prevRightShoulderState = 0;
 
 	pauseStartTime = 0;
 	totalPauseDuration = 0;
 	lastPauseTime = 0;
 
 	flameDamage = 0;
+
+	crosshairDistance = 75;
+
+	autoAim = false;
+	playerWantsAutoAim = false;
+
+	playerQuit = false;
+
+	bossMessageShown = false;
+	bossMessageDuration = 0;
 }
 
 static void resetStage(void)
@@ -204,6 +246,7 @@ static void resetStage(void)
 	Explosion *ex;
 	Debris *d;
 
+	spaceBeamEnabled = 0;
 	shotgunEnabled = 0;
 	laserEnabled = 0;
 	flameEnabled = 0;
@@ -215,6 +258,7 @@ static void resetStage(void)
 	spaceBeamSoundPlaying = false;
 
 	prevStartButtonState = 0;
+	prevRightShoulderState = 0;
 
 	pauseStartTime = 0;
 	totalPauseDuration = 0;
@@ -222,10 +266,27 @@ static void resetStage(void)
 
 	flameDamage = 0;
 
+	crosshairDistance = 75;
+
+	autoAim = false;
+	playerWantsAutoAim = false;
+
+	playerQuit = false;
+
+	bossMessageShown = false;
+	bossMessageDuration = 0;
+
 	while (stage.fighterHead.next)
 	{
 		e = stage.fighterHead.next;
 		stage.fighterHead.next = e->next;
+		free(e);
+	}
+
+	while (stage.crossHairHead.next)
+	{
+		e = stage.crossHairHead.next;
+		stage.crossHairHead.next = e->next;
 		free(e);
 	}
 
@@ -294,6 +355,7 @@ static void resetStage(void)
 
 	memset(&stage, 0, sizeof(Stage));
 	stage.fighterTail = &stage.fighterHead;
+	stage.crossHairTail = &stage.crossHairHead;
 	stage.bulletTail = &stage.bulletHead;
 	stage.beamTail = &stage.beamHead;
 	stage.explosionTail = &stage.explosionHead;
@@ -324,6 +386,26 @@ static void initPlayer()
 	player->side = SIDE_PLAYER;
 
 	aim_angle = 0.0f;
+}
+
+static void initCrossHair()
+{
+	crossHair = malloc(sizeof(Entity));
+	if (crossHair == NULL)
+	{
+		fprintf(stderr, "Failed to allocate memory for crossHair\n");
+		exit(EXIT_FAILURE);
+	}
+	memset(crossHair, 0, sizeof(Entity));
+
+	crossHair->w = 100;
+	crossHair->h = 100;
+
+	stage.crossHairTail->next = crossHair;
+	stage.crossHairTail = crossHair;
+
+	crossHair->texture = crossHairTexture;
+	SDL_QueryTexture(crossHair->texture, NULL, NULL, &crossHair->w, &crossHair->h);
 }
 
 static void logic(void)
@@ -361,6 +443,7 @@ static void logic(void)
 	}
 
 	clipPlayer();
+	clipCrosshair();
 
 	if (!app.controller && player == NULL && --stageResetTimer <= 0)
 	{
@@ -440,25 +523,21 @@ void doPlayer(void)
 					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) < -8000)
 					{
 						player->dy = -PLAYER_SPEED;
-						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 					}
 
 					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTY) > 8000)
 					{
 						player->dy = PLAYER_SPEED;
-						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 					}
 
 					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) < -8000)
 					{
 						player->dx = -PLAYER_SPEED;
-						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 					}
 
 					if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_LEFTX) > 8000)
 					{
 						player->dx = PLAYER_SPEED;
-						printf("Player's coordinates: x = %f, y = %f\n", player->x, player->y);
 					}
 				}
 				// Calculate aiming direction
@@ -549,7 +628,6 @@ void doPlayer(void)
 						Mix_Pause(CH_ALIEN_FIRE);
 						Mix_Pause(CH_POINTS);
 						Mix_Pause(CH_SHIP_DOWN);
-						pauseMusic();
 					}
 					else if (stage.gamePaused == false)
 					{
@@ -575,7 +653,6 @@ void doPlayer(void)
 						totalPauseDuration += lastPauseTime;
 					}
 				}
-
 				// Update the previous button state to indicate it's pressed
 				prevStartButtonState = 1;
 			}
@@ -698,7 +775,6 @@ void doPlayer(void)
 						Mix_Pause(CH_ALIEN_FIRE);
 						Mix_Pause(CH_POINTS);
 						Mix_Pause(CH_SHIP_DOWN);
-						pauseMusic();
 					}
 					else if (stage.gamePaused == false)
 					{
@@ -709,7 +785,6 @@ void doPlayer(void)
 						Mix_Resume(CH_ALIEN_FIRE);
 						Mix_Resume(CH_POINTS);
 						Mix_Resume(CH_SHIP_DOWN);
-						resumeMusic();
 					}
 
 					if (stage.gamePaused)
@@ -758,6 +833,15 @@ static void fireBullet(float angle)
 	// Calculate spawn position relative to the player's center
 	float spawnDistance = player->w / 2.0f + bullet->w / 2.0f; // Distance from player center to bullet spawn point
 
+	if (autoAim && crossHair != NULL)
+	{
+		// Calculate angle towards crosshair
+		float dx = crossHair->x + crossHair->w / 2.0f - (player->x + player->w / 2.0f);
+		float dy = crossHair->y + crossHair->h / 2.0f - (player->y + player->h / 2.0f);
+		angle = atan2(dy, dx);
+		aim_angle = angle;
+	}
+
 	// Calculate spawn offsets based on firing angle
 	float spawnOffsetX = spawnDistance * cosf(angle);
 	float spawnOffsetY = spawnDistance * sinf(angle);
@@ -802,6 +886,15 @@ static void fireShotgun(float angle)
 
 		// Calculate spawn position relative to the player's center
 		float spawnDistance = player->w / 2.0f + bullet->w / 2.0f; // Distance from player center to bullet spawn point
+
+		if (autoAim && crossHair != NULL)
+		{
+			// Calculate angle towards crosshair
+			float dx = crossHair->x + crossHair->w / 2.0f - (player->x + player->w / 2.0f);
+			float dy = crossHair->y + crossHair->h / 2.0f - (player->y + player->h / 2.0f);
+			angle = atan2(dy, dx);
+			aim_angle = angle;
+		}
 
 		// Calculate spawn offsets based on firing angle and spread
 		float spawnOffsetX = spawnDistance * cosf(angle + spreadAngles[i]);
@@ -855,6 +948,15 @@ static void fireLaser(float angle)
 	// Calculate spawn offsets based on firing angle
 	float spawnOffsetX = spawnDistance * cosf(angle);
 	float spawnOffsetY = spawnDistance * sinf(angle);
+
+	if (autoAim && crossHair != NULL)
+	{
+		// Calculate angle towards crosshair
+		float dx = crossHair->x + crossHair->w / 2.0f - (player->x + player->w / 2.0f);
+		float dy = crossHair->y + crossHair->h / 2.0f - (player->y + player->h / 2.0f);
+		angle = atan2(dy, dx);
+		aim_angle = angle;
+	}
 
 	// Adjust laser spawn position based on player's center and spawn offsets
 	laser->x = player->x + player->w / 2.0f - laser->w / 2.0f + spawnOffsetX;
@@ -913,6 +1015,15 @@ static void fireFlame(float angle)
 		// Calculate spawn offsets based on firing angle and current beam index
 		float spawnOffsetX = spawnDistance * cosf(angle) + i * distanceBetweenBeams * cosf(angle);
 		float spawnOffsetY = spawnDistance * sinf(angle) + i * distanceBetweenBeams * sinf(angle);
+
+		if (autoAim && crossHair != NULL)
+		{
+			// Calculate angle towards crosshair
+			float dx = crossHair->x + crossHair->w / 2.0f - (player->x + player->w / 2.0f);
+			float dy = crossHair->y + crossHair->h / 2.0f - (player->y + player->h / 2.0f);
+			angle = atan2(dy, dx);
+			aim_angle = angle;
+		}
 
 		// Set beam properties
 		spaceBeam->x = player->x + player->w / 2.0f - spaceBeam->w / 2.0f + spawnOffsetX;
@@ -988,6 +1099,15 @@ static void fireSpaceBeam(float angle)
 		// Calculate spawn offsets based on firing angle and current beam index
 		float spawnOffsetX = spawnDistance * cosf(angle) + i * distanceBetweenBeams * cosf(angle);
 		float spawnOffsetY = spawnDistance * sinf(angle) + i * distanceBetweenBeams * sinf(angle);
+
+		if (autoAim && crossHair != NULL)
+		{
+			// Calculate angle towards crosshair
+			float dx = crossHair->x + crossHair->w / 2.0f - (player->x + player->w / 2.0f);
+			float dy = crossHair->y + crossHair->h / 2.0f - (player->y + player->h / 2.0f);
+			angle = atan2(dy, dx);
+			aim_angle = angle;
+		}
 
 		// Set beam properties
 		spaceBeam->x = player->x + player->w / 2.0f - spaceBeam->w / 2.0f + spawnOffsetX;
@@ -1181,10 +1301,6 @@ static void doFighters(void)
 		if ((e != player && e->x - (stage.cameraX - 500) < -e->w) || (e != player && e->y - (stage.cameraY - 500) < -e->h))
 		{ // If enemy goes out of bounds
 			e->health = 0;
-			if (stage.currentEnemyCount > 0)
-			{
-				stage.currentEnemyCount--;
-			}
 		}
 
 		if (e->health == 0)
@@ -1194,6 +1310,7 @@ static void doFighters(void)
 				player = NULL;
 				Mix_Pause(CH_SHIP_DOWN);
 				Mix_Pause(CH_HYPER_DRIVE);
+				Mix_Pause(CH_PLAYER);
 				Mix_Pause(CH_POINTS);
 			}
 
@@ -1328,10 +1445,6 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 	if (e2->health <= 0)
 	{
 		e2->health = 0;
-		if (stage.currentEnemyCount > 0)
-		{
-			stage.currentEnemyCount--;
-		}
 		Mix_Pause(CH_ALIEN_DIES);
 		playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 		addExplosions(e2->x, e2->y, 32);
@@ -1562,10 +1675,6 @@ static int beamHitFighter(Beam *b)
 								stage.score++;
 								Mix_Pause(CH_ALIEN_DIES);
 								playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
-								if (stage.currentEnemyCount > 0)
-								{
-									stage.currentEnemyCount--;
-								}
 							}
 						}
 					}
@@ -1618,10 +1727,6 @@ static int beamHitFighter(Beam *b)
 								stage.score++;
 								Mix_Pause(CH_ALIEN_DIES);
 								playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
-								if (stage.currentEnemyCount > 0)
-								{
-									stage.currentEnemyCount--;
-								}
 							}
 						}
 					}
@@ -1709,15 +1814,13 @@ static int bulletHitFighter(Entity *b)
 			}
 			else
 			{
+				Mix_Pause(CH_PLAYER_DIES);
+				playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
 				e->health = 0;
 				addExplosions(e->x, e->y, 32);
 				addDebris(e);
-				if (e == player)
-				{
-					Mix_Pause(CH_PLAYER_DIES);
-					playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
-				}
-				else
+
+				if (e != player)
 				{
 					if (rand() % 10 == 0)
 					{
@@ -1742,10 +1845,6 @@ static int bulletHitFighter(Entity *b)
 					stage.score++;
 					Mix_Pause(CH_ALIEN_DIES);
 					playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
-					if (stage.currentEnemyCount > 0)
-					{
-						stage.currentEnemyCount--;
-					}
 				}
 			}
 
@@ -1784,6 +1883,29 @@ static void clipPlayer(void)
 		if (player->y > WORLD_HEIGHT - player->h)
 		{
 			player->y = WORLD_HEIGHT - player->h;
+		}
+	}
+}
+
+static void clipCrosshair(void)
+{
+	if (crossHair != NULL)
+	{
+		if (crossHair->x < 0)
+		{
+			crossHair->x = 0;
+		}
+		if (crossHair->y < 0)
+		{
+			crossHair->y = 0;
+		}
+		if (crossHair->x > WORLD_WIDTH - crossHair->w)
+		{
+			crossHair->x = WORLD_WIDTH - crossHair->w;
+		}
+		if (crossHair->y > WORLD_HEIGHT - crossHair->h)
+		{
+			crossHair->y = WORLD_HEIGHT - crossHair->h;
 		}
 	}
 }
@@ -2472,55 +2594,30 @@ static void draw(void)
 
 	drawHud();
 
-	if (player != NULL)
+	if (stage.gamePaused)
 	{
-		// Calculate rotation angle in degrees (SDL requires degrees)
-		float rotationAngle = aim_angle * (180.0f / M_PI);
+		drawCrosshair();
+	}
 
-		// Center of rotation (if needed)
-		SDL_Point rotationCenter = {player->w / 2, player->h / 2};
+	if (bossMessageDuration > 0)
+	{
+		drawEnemyBossMessage(SCREEN_WIDTH / 2, (SCREEN_HEIGHT / 2) - 70, 255, 0, 0, "WHO DARES DESTROY MY ARMY");
+	}
+	else if (secondBossMessageDuration > 0)
+	{
+		drawEnemyBossMessage(SCREEN_WIDTH / 2, (SCREEN_HEIGHT / 2) - 70, 255, 0, 0, "LET ME SEE YOU");
+	}
 
-		// Render the player's texture with rotation
-		SDL_Rect playerRect = {player->x - stage.cameraX, player->y - stage.cameraY, player->w, player->h};
-
-		// Draw boost effect if boost is active
-		if (player->boostActive)
-		{
-			if (hyperDriveSoundPlayed == false)
-			{
-				playSound(SND_HYPER_DRIVE, CH_HYPER_DRIVE);
-			}
-			hyperDriveSoundPlayed = true;
-
-			if (flameGifFrame == 41)
-			{
-				flameGifFrame = 0;
-			}
-
-			flameGifFrame++;
-
-			if (flameGifFrame <= 10)
-			{
-				currentTexture = playerBoostTexture1;
-			}
-			else if (flameGifFrame <= 20)
-			{
-				currentTexture = playerBoostTexture2;
-			}
-			else if (flameGifFrame <= 30)
-			{
-				currentTexture = playerBoostTexture3;
-			}
-			else if (flameGifFrame <= 40)
-			{
-				currentTexture = playerBoostTexture4;
-			}
-			SDL_RenderCopyEx(app.renderer, currentTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
-		}
-		else
-		{ // Draw the player normally by default
-			SDL_RenderCopyEx(app.renderer, playerTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
-		}
+	if (stage.currentEnemyCount > 500 && !bossMessageShown)
+	{
+		bossMessageDuration = 300; // 300 frames
+		bossMessageShown = true;
+		initiateScreenShake(300, 5); // Shake for 30 frames with magnitude 5
+	}
+	if (bossMessageShown && bossMessageDuration == 1)
+	{
+		initiateScreenShake(300, 5);	 // Shake for 30 frames with magnitude 5
+		secondBossMessageDuration = 300; // 300 frames
 	}
 }
 
@@ -2600,6 +2697,168 @@ static void drawFighters(void)
 			blitRotated(e->texture, e->x - stage.cameraX, e->y - stage.cameraY, e->angle); // Draw enemies with rotation
 		}
 	}
+
+	if (player != NULL)
+	{
+		// Calculate rotation angle in degrees (SDL requires degrees)
+		float rotationAngle = aim_angle * (180.0f / M_PI);
+
+		// Center of rotation (if needed)
+		SDL_Point rotationCenter = {player->w / 2, player->h / 2};
+
+		// Render the player's texture with rotation
+		SDL_Rect playerRect = {player->x - stage.cameraX, player->y - stage.cameraY, player->w, player->h};
+
+		// Draw boost effect if boost is active
+		if (player->boostActive)
+		{
+			autoAim = false;
+			if (!hyperDriveSoundPlayed)
+			{
+				playSound(SND_HYPER_DRIVE, CH_HYPER_DRIVE);
+			}
+			hyperDriveSoundPlayed = true;
+
+			if (flameGifFrame == 41)
+			{
+				flameGifFrame = 0;
+			}
+
+			flameGifFrame++;
+
+			if (flameGifFrame <= 10)
+			{
+				currentTexture = playerBoostTexture1;
+			}
+			else if (flameGifFrame <= 20)
+			{
+				currentTexture = playerBoostTexture2;
+			}
+			else if (flameGifFrame <= 30)
+			{
+				currentTexture = playerBoostTexture3;
+			}
+			else if (flameGifFrame <= 40)
+			{
+				currentTexture = playerBoostTexture4;
+			}
+			SDL_RenderCopyEx(app.renderer, currentTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+		}
+		else
+		{
+			// Draw the player normally by default
+			SDL_RenderCopyEx(app.renderer, playerTexture, NULL, &playerRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
+		}
+
+		// Update crosshair position based on input device
+		if ((app.controller) && (!stage.gamePaused) && (!autoAim))
+		{
+			// Handle controller input for crosshair
+			int aimX = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX);
+			int aimY = SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY);
+
+			if (aimX * aimX + aimY * aimY > 8000 * 8000) // Check if the player is aiming
+			{
+				if (crosshairDistance < MAX_CROSSHAIR_DISTANCE)
+				{
+					crosshairDistance += CROSSHAIR_STEP * 20; // Increase the distance quickly when aiming
+				}
+			}
+			else
+			{
+				if (crosshairDistance > BASE_CROSSHAIR_DISTANCE)
+				{
+					crosshairDistance -= CROSSHAIR_STEP; // Decrease the distance gradually when not aiming
+				}
+			}
+
+			// Calculate crosshair position relative to player and aim direction
+			crossHair->x = (player->x + crosshairDistance * cos(aim_angle) + player->w / 2 - crossHair->w / 2);
+			crossHair->y = (player->y + crosshairDistance * sin(aim_angle) + player->h / 2 - crossHair->h / 2);
+
+			// Render the crosshair texture at the updated position
+			SDL_Rect crossHairRect = {crossHair->x - stage.cameraX, crossHair->y - stage.cameraY, crossHair->w, crossHair->h};
+			SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
+		}
+		else if ((app.controller) && (!stage.gamePaused) && (autoAim))
+		{
+			Entity *closestEnemy = NULL;
+			float closestDistance = FLT_MAX;
+			float playerAngle = aim_angle; // Capture the player's current aiming angle
+
+			// Find the closest enemy to the player's aim direction
+			for (Entity *e = stage.fighterHead.next; e != NULL; e = e->next)
+			{
+				if (e != player)
+				{
+					// Calculate vector from player to enemy
+					float dx = e->x + e->w / 2 - (player->x + player->w / 2);
+					float dy = e->y + e->h / 2 - (player->y + player->h / 2);
+					float distance = sqrt(dx * dx + dy * dy);
+
+					// Calculate angle from player to enemy
+					float enemyAngle = atan2(dy, dx);
+
+					// Adjust enemy angle to be within [0, 2*PI)
+					if (enemyAngle < 0)
+					{
+						enemyAngle += 2 * M_PI;
+					}
+
+					// Calculate angular difference between player's aim direction and enemy
+					float angleDiff = fabs(enemyAngle - playerAngle);
+
+					// Normalize angle difference to be within [0, PI)
+					if (angleDiff > M_PI)
+					{
+						angleDiff = 2 * M_PI - angleDiff;
+					}
+
+					// Check if this enemy is within the acceptable angular range
+					// Adjust the angular range as needed (here, approximately 45 degrees)
+					if (angleDiff < M_PI / 4)
+					{
+						// Check if this enemy is the closest so far
+						if (distance < closestDistance)
+						{
+							closestEnemy = e;
+							closestDistance = distance;
+						}
+					}
+				}
+			}
+
+			// Adjust the crosshair to target the closest eligible enemy if one is found
+			if (closestEnemy != NULL)
+			{
+				crossHair->x = closestEnemy->x + closestEnemy->w / 2 - crossHair->w / 2;
+				crossHair->y = closestEnemy->y + closestEnemy->h / 2 - crossHair->h / 2;
+			}
+			else
+			{
+				// If no eligible enemy is found, default to player's aim direction
+				crossHair->x = player->x + (int)(100 * cos(playerAngle)) - crossHair->w / 2;
+				crossHair->y = player->y + (int)(100 * sin(playerAngle)) - crossHair->h / 2;
+			}
+
+			// Render the crosshair texture at the updated position
+			SDL_Rect crossHairRect = {crossHair->x - stage.cameraX, crossHair->y - stage.cameraY, crossHair->w, crossHair->h};
+			SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
+		}
+		else if (!stage.gamePaused)
+		{
+			// Handle mouse input for crosshair
+			int mouseX, mouseY;
+			SDL_GetMouseState(&mouseX, &mouseY);
+
+			// Calculate crosshair position relative to mouse position
+			crossHair->x = mouseX - stage.cameraX - crossHair->w / 2;
+			crossHair->y = mouseY - stage.cameraY - crossHair->h / 2;
+			// Render the crosshair texture at the updated position
+			SDL_Rect crossHairRect = {crossHair->x, crossHair->y, crossHair->w, crossHair->h};
+			SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
+		}
+	}
 }
 
 static void drawBullets(void)
@@ -2668,6 +2927,10 @@ static void drawExplosions(void)
 
 static void drawHud(void)
 {
+	if (stage.gamePaused)
+	{
+		drawPauseMenu();
+	}
 	// Draw the score
 	drawText(SCREEN_WIDTH - 10, 40, 255, 255, 255, TEXT_RIGHT, "SCORE: %03d", stage.score);
 
@@ -2701,7 +2964,7 @@ static void drawHud(void)
 		Entity *enemy;
 		for (enemy = stage.fighterHead.next; enemy != NULL; enemy = enemy->next)
 		{
-			if (enemy != player) // Only draw the health bar for enemies
+			if (!stage.gamePaused && enemy != player) // Only draw the health bar for enemies
 			{
 				// Calculate health percentage
 				float enemyHealthPercentage = (float)enemy->health / enemy->maxHealth;
@@ -2830,7 +3093,6 @@ static void drawHud(void)
 			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
 			SDL_RenderFillRect(app.renderer, &timerBarRect);
 		}
-		//////////////////////////////////////////////////////
 		else if (spaceBeamEnabled == 1)
 		{
 			Uint32 currentTime;
@@ -2916,6 +3178,161 @@ static void drawHud(void)
 	}
 }
 
+static void drawPauseMenu(void)
+{
+	// Draw a semi-transparent background overlay
+	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 128); // Semi-transparent black
+	SDL_Rect overlayRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+	SDL_RenderFillRect(app.renderer, &overlayRect);
+
+	// Draw a box for the pause menu
+	int menuWidth = 500;
+	int menuHeight = 600;
+	int menuX = (SCREEN_WIDTH - menuWidth) / 2;
+	int menuY = (SCREEN_HEIGHT - menuHeight) / 2;
+	SDL_Rect menuRect = {menuX, menuY, menuWidth, menuHeight};
+	SDL_SetRenderDrawColor(app.renderer, 40, 40, 40, 100); // Dark grey box
+	SDL_RenderFillRect(app.renderer, &menuRect);
+
+	// Draw text for the pause menu options
+	drawText(menuX + menuWidth / 2, menuY + 20, 255, 255, 255, TEXT_CENTER, "PAUSED");
+
+	// Check if crosshair is over QUIT option
+	int quitOptionX = menuX + menuWidth / 2;
+	int quitOptionY = menuY + 120;
+	int quitOptionWidth = 200; // Adjust width based on your text size
+	int quitOptionHeight = 30; // Adjust height based on your text size
+	SDL_Rect quitOptionRect = {quitOptionX - quitOptionWidth / 2, quitOptionY - quitOptionHeight / 2, quitOptionWidth, quitOptionHeight};
+	SDL_Rect crossHairRect = {crossHair->x - stage.cameraX, crossHair->y - stage.cameraY, crossHair->w, crossHair->h};
+
+	// Check if crosshair intersects with QUIT option
+	bool isHoveringQuit = SDL_HasIntersection(&crossHairRect, &quitOptionRect);
+
+	// Render QUIT option text with hover effect if hovering
+	drawText(menuX + menuWidth / 2, quitOptionY, isHoveringQuit ? 255 : 255, isHoveringQuit ? 0 : 255, isHoveringQuit ? 0 : 255, TEXT_CENTER, "SELECT TO QUIT");
+
+	// Check if crosshair is over RESTART option (above QUIT)
+	int restartOptionX = menuX + menuWidth / 2;
+	int restartOptionY = menuY + 220; // Adjust Y position as needed
+	int restartOptionWidth = 200;	 // Adjust width based on your text size
+	int restartOptionHeight = 30;	 // Adjust height based on your text size
+	SDL_Rect restartOptionRect = {restartOptionX - restartOptionWidth / 2, restartOptionY - restartOptionHeight / 2, restartOptionWidth, restartOptionHeight};
+
+	// Check if crosshair intersects with RESTART option
+	bool isHoveringRestart = SDL_HasIntersection(&crossHairRect, &restartOptionRect);
+
+	// Render RESTART option text with hover effect if hovering
+	drawText(menuX + menuWidth / 2, restartOptionY, isHoveringRestart ? 255 : 255, isHoveringRestart ? 0 : 255, isHoveringRestart ? 0 : 255, TEXT_CENTER, "SELECT TO RESTART");
+
+	// Check if crosshair is over AUTO AIM option
+	int autoAimOptionX = menuX + menuWidth / 2;
+	int autoAimOptionY = menuY + 320;
+	int autoAimOptionWidth = 200; // Adjust width based on your text size
+	int autoAimOptionHeight = 30; // Adjust height based on your text size
+	SDL_Rect autoAimOptionRect = {autoAimOptionX - autoAimOptionWidth / 2, autoAimOptionY - autoAimOptionHeight / 2, autoAimOptionWidth, autoAimOptionHeight};
+
+	// Check if crosshair intersects with AUTO AIM option
+	bool isHoveringAutoAim = SDL_HasIntersection(&crossHairRect, &autoAimOptionRect);
+
+	// Render AUTO AIM option text with hover effect if hovering
+	if (app.controller)
+	{
+		if (autoAim)
+		{
+			drawText(menuX + menuWidth / 2, autoAimOptionY, 255, 0, 0, TEXT_CENTER, "DISABLE AUTO AIM");
+		}
+		else
+		{
+			drawText(menuX + menuWidth / 2, autoAimOptionY, isHoveringAutoAim ? 0 : 255, isHoveringAutoAim ? 255 : 255, isHoveringAutoAim ? 0 : 255, TEXT_CENTER, "ENABLE AUTO AIM");
+		}
+	}
+	// Reset render blend mode to default
+	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_NONE);
+
+	// Handle controller input for quitting the game and restarting
+	if (stage.gamePaused)
+	{
+		// Get current state of the right shoulder button
+		int currentRightShoulderState = SDL_GameControllerGetButton(app.controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+
+		// Check right shoulder press for quitting the game
+		if (currentRightShoulderState && isHoveringQuit && prevRightShoulderState == 0)
+		{
+			// Play sound and quit game
+			quitGame();
+
+			// Update previous state to indicate button is pressed
+			prevRightShoulderState = 1;
+		}
+
+		// Check right shoulder press for restarting the game
+		if (currentRightShoulderState && isHoveringRestart && prevRightShoulderState == 0)
+		{
+			// Restart game
+			restartGame();
+
+			// Update previous state to indicate button is pressed
+			prevRightShoulderState = 1;
+		}
+
+		// Check right shoulder press for enabling auto aim
+		if (currentRightShoulderState && isHoveringAutoAim && prevRightShoulderState == 0)
+		{
+			// Toggle auto aim
+			autoAim = !autoAim;
+			playerWantsAutoAim = !playerWantsAutoAim;
+
+			// Update previous state to indicate button is pressed
+			prevRightShoulderState = 1;
+		}
+
+		// Update previous state if button is released
+		if (!currentRightShoulderState)
+		{
+			prevRightShoulderState = 0;
+		}
+
+		// Check for left mouse button click for options
+		int mouseX, mouseY;
+		Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
+
+		// Handle left mouse button click for quitting the game
+		if (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT) && isHoveringQuit)
+		{
+			// Play sound and quit game
+			quitGame();
+		}
+
+		// Handle left mouse button click for restarting the game
+		if (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT) && isHoveringRestart)
+		{
+			// Restart game
+			restartGame();
+		}
+	}
+	else
+	{
+		// Reset previous state when not paused
+		prevRightShoulderState = 0;
+	}
+}
+
+// Function to quit the game
+static void quitGame()
+{
+	stage.gamePaused = false;
+	Entity *e = player;
+	e->health = 5;
+	playerQuit = true;
+	handleFighterCollision(player, e);
+}
+
+static void restartGame()
+{
+	initStage();
+}
+
 static void toggleBoost(bool activate)
 {
 	if (activate)
@@ -2932,6 +3349,10 @@ static void toggleBoost(bool activate)
 		PLAYER_SPEED = 4;			 // Reset player speed to base speed
 		player->boostActive = false; // Reset boost active flag
 		hyperDriveSoundPlayed = false;
+		if (playerWantsAutoAim)
+		{
+			autoAim = true;
+		}
 	}
 }
 
@@ -2955,14 +3376,16 @@ static void toggleSystemsDown(bool activate)
 	}
 }
 
-// Update camera position based on player's movement
 void updateCamera()
 {
 	if (player != NULL)
 	{
-		// Example: Center camera on player
+		// Center camera on player
 		stage.cameraX = player->x - (SCREEN_WIDTH / 2);
 		stage.cameraY = player->y - (SCREEN_HEIGHT / 2);
+
+		// Apply screen shake offset
+		updateScreenShake();
 
 		// Clamp camera position to game world boundaries
 		if (stage.cameraX < 0)
@@ -2982,4 +3405,126 @@ void updateCamera()
 			stage.cameraY = WORLD_HEIGHT - SCREEN_HEIGHT;
 		}
 	}
+}
+
+static void updateScreenShake()
+{
+	if (shakeDuration > 0)
+	{
+		// Calculate new shake offsets
+		int shakeOffsetX = rand() % (2 * shakeMagnitude + 1) - shakeMagnitude;
+		int shakeOffsetY = rand() % (2 * shakeMagnitude + 1) - shakeMagnitude;
+
+		// Apply shake offsets to camera position
+		int shakenCameraX = stage.cameraX + shakeOffsetX;
+		int shakenCameraY = stage.cameraY + shakeOffsetY;
+
+		// Clamp shaken camera position to game world boundaries
+		if (shakenCameraX < 0)
+		{
+			shakenCameraX = 0;
+		}
+		if (shakenCameraY < 0)
+		{
+			shakenCameraY = 0;
+		}
+		if (shakenCameraX > WORLD_WIDTH - SCREEN_WIDTH)
+		{
+			shakenCameraX = WORLD_WIDTH - SCREEN_WIDTH;
+		}
+		if (shakenCameraY > WORLD_HEIGHT - SCREEN_HEIGHT)
+		{
+			shakenCameraY = WORLD_HEIGHT - SCREEN_HEIGHT;
+		}
+
+		// Update stage.cameraX and stage.cameraY with the clamped shaken values
+		stage.cameraX = shakenCameraX;
+		stage.cameraY = shakenCameraY;
+
+		// Decrease shake duration
+		shakeDuration--;
+	}
+}
+
+static void drawCrosshair()
+{
+	if (player != NULL)
+	{
+		// Check if a controller is connected and the game is paused
+		if (app.controller && stage.gamePaused)
+		{
+			// Update crosshair position based on controller input
+			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY) < -8000)
+			{
+				crossHair->y -= CROSSHAIR_SPEED; // Move crosshair up
+			}
+
+			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTY) > 8000)
+			{
+				crossHair->y += CROSSHAIR_SPEED; // Move crosshair down
+			}
+
+			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX) < -8000)
+			{
+				crossHair->x -= CROSSHAIR_SPEED; // Move crosshair left
+			}
+
+			if (SDL_GameControllerGetAxis(app.controller, SDL_CONTROLLER_AXIS_RIGHTX) > 8000)
+			{
+				crossHair->x += CROSSHAIR_SPEED; // Move crosshair right
+			}
+		}
+		else
+		{
+			// Update crosshair position based on mouse position
+			int mouseX, mouseY;
+			SDL_GetMouseState(&mouseX, &mouseY);
+
+			crossHair->x = mouseX + stage.cameraX;
+			crossHair->y = mouseY + stage.cameraY;
+		}
+
+		// Render the crosshair texture at the updated position
+		SDL_Rect crossHairRect = {crossHair->x - stage.cameraX, crossHair->y - stage.cameraY, crossHair->w, crossHair->h};
+		SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
+	}
+}
+
+static void drawEnemyBossMessage(int x, int y, int r, int g, int b, char *text)
+{
+	// Draw the message only if bossMessageDuration is greater than 0
+	if (bossMessageDuration > 0)
+	{
+		drawText(x, y, r, g, b, TEXT_CENTER, text);
+		bossMessageDuration--; // Decrement the duration each frame
+		if (bossMessageShown == true)
+		{
+			secondBossMessageDuration--;
+		}
+		if (player != NULL)
+		{
+			player->x = WORLD_WIDTH / 2;
+			player->y = WORLD_HEIGHT / 2;
+		}
+	}
+	else if (secondBossMessageDuration > 0)
+	{
+		drawText(x, y, r, g, b, TEXT_CENTER, text);
+		bossMessageDuration--; // Decrement the duration each frame
+		if (bossMessageShown == true)
+		{
+			secondBossMessageDuration--;
+		}
+		if (player != NULL)
+		{
+			player->x = WORLD_WIDTH / 2;
+			player->y = WORLD_HEIGHT / 2;
+		}
+	}
+}
+
+static void initiateScreenShake(int duration, int magnitude)
+{
+	shakeDuration = duration;
+	shakeMagnitude = magnitude;
 }

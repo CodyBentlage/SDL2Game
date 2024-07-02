@@ -56,23 +56,23 @@ void playBeamSound(int id, int channel, bool loop)
 
 static void loadSounds(void)
 {
-	sounds[SND_PLAYER_FIRE] = Mix_LoadWAV("sound/334227__jradcoolness__laser.ogg");
+	sounds[SND_PLAYER_FIRE] = Mix_LoadWAV("sound/playerFire.ogg");
 	sounds[SND_PLAYER_FIRE_LASER] = Mix_LoadWAV("sound/laser.ogg");
-	sounds[SND_ALIEN_FIRE] = Mix_LoadWAV("sound/196914__dpoggioli__laser-gun.ogg");
-	sounds[SND_PLAYER_DIE] = Mix_LoadWAV("sound/245372__quaker540__hq-explosion.ogg");
+	sounds[SND_ALIEN_FIRE] = Mix_LoadWAV("sound/alienFire.ogg");
+	sounds[SND_PLAYER_DIE] = Mix_LoadWAV("sound/playerDies.ogg");
 	sounds[SND_SHIP_HIT] = Mix_LoadWAV("sound/shipHit.ogg");
-	sounds[SND_ALIEN_DIE] = Mix_LoadWAV("sound/10 Guage Shotgun-SoundBible.com-74120584.ogg");
+	sounds[SND_ALIEN_DIE] = Mix_LoadWAV("sound/alienDies.ogg");
 	sounds[SND_POINTS] = Mix_LoadWAV("sound/342749__rhodesmas__notification-01.ogg");
 	sounds[SND_HYPER_DRIVE] = Mix_LoadWAV("sound/hyperDrive.ogg");
 	sounds[SND_SHIP_DOWN] = Mix_LoadWAV("sound/shipDown.ogg");
 	sounds[SND_LASER_BEAM] = Mix_LoadWAV("sound/laserBeam.ogg");
 
 	// Set individual volume levels for each sound
-	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE], 20);
+	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE], 40);
 	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE_LASER], 20);
-	Mix_VolumeChunk(sounds[SND_LASER_BEAM], 30);
-	Mix_VolumeChunk(sounds[SND_ALIEN_FIRE], 40);
-	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 15);
+	Mix_VolumeChunk(sounds[SND_LASER_BEAM], 40);
+	Mix_VolumeChunk(sounds[SND_ALIEN_FIRE], 20);
+	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 128);
 	Mix_VolumeChunk(sounds[SND_SHIP_HIT], 20);
 	Mix_VolumeChunk(sounds[SND_ALIEN_DIE], 15);
 	Mix_VolumeChunk(sounds[SND_POINTS], 20);
