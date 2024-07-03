@@ -110,6 +110,7 @@ typedef struct
 	Entity flamePodHead, *flamePodTail;
 	Entity spaceBeamPodHead, *spaceBeamPodTail;
 	Entity healthPodHead, *healthPodTail;
+	Entity littleBuddyPodHead, *littleBuddyPodTail;
 	Explosion explosionHead, *explosionTail;
 	Debris debrisHead, *debrisTail;
 	int score;

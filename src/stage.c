@@ -24,6 +24,10 @@ static void initCrossHair(void);
 static void drawCrosshair(void);
 static void doPlayer(void);
 
+static void initLittleBuddy(void);
+static void doLittleBuddy(void);
+static void fireLittleBuddyBullet(Entity *shooter, float targetX, float targetY);
+
 static void fireBullet(float angle);
 static void fireShotgun(float angle);
 static void fireLaser(float angle);
@@ -82,11 +86,16 @@ static void doHealthPods(void);
 static void addHealthPods(int x, int y);
 static void drawHealthPods(void);
 
+static void doLittleBuddyPods(void);
+static void addLittleBuddyPods(int x, int y);
+static void drawLittleBuddyPods(void);
+
 static void toggleBoost(bool activate);
 static void toggleSystemsDown(bool activate);
 
 static Entity *player;
 static Entity *crossHair;
+static Entity *littleBuddy;
 static SDL_Texture *bulletTexture;
 static SDL_Texture *laserTexture;
 static SDL_Texture *flameTexture;
@@ -101,11 +110,13 @@ static SDL_Texture *laserPodTexture;
 static SDL_Texture *flamePodTexture;
 static SDL_Texture *spaceBeamPodTexture;
 static SDL_Texture *healthTexture;
+static SDL_Texture *littleBuddyPodTexture;
 static SDL_Texture *currentTexture;
 static SDL_Texture *playerBoostTexture1;
 static SDL_Texture *playerBoostTexture2;
 static SDL_Texture *playerBoostTexture3;
 static SDL_Texture *playerBoostTexture4;
+static SDL_Texture *littleBuddyTexture;
 
 static int aim_x;
 static int aim_y;
@@ -129,6 +140,8 @@ static Uint32 flameStartTime = 0;
 static int spaceBeamEnabled = 0;
 static int spaceBeamDuration = 0;
 static Uint32 spaceBeamStartTime = 0;
+
+static int littleBuddyEnabled = 0;
 
 static float PLAYER_SPEED = 4;
 static float CROSSHAIR_SPEED = 10;
@@ -178,15 +191,17 @@ void initStage(void)
 	playerTexture = loadTexture("gfx/player.png");
 	crossHairTexture = loadTexture("gfx/crosshair.png");
 	explosionTexture = loadTexture("gfx/explosion.png");
-	pointsTexture = loadTexture("gfx/points.png");
+	pointsTexture = loadTexture("gfx/shotgun.png");
 	laserPodTexture = loadTexture("gfx/laserPod.png");
 	flamePodTexture = loadTexture("gfx/flamePod.png");
 	spaceBeamPodTexture = loadTexture("gfx/spaceBeamPod.png");
+	littleBuddyPodTexture = loadTexture("gfx/littleBuddyPod.png");
 	healthTexture = loadTexture("gfx/health.png");
 	playerBoostTexture1 = loadTexture("gfx/playerFlamegif_0.png");
 	playerBoostTexture2 = loadTexture("gfx/playerFlamegif_1.png");
 	playerBoostTexture3 = loadTexture("gfx/playerFlamegif_2.png");
 	playerBoostTexture4 = loadTexture("gfx/playerFlamegif_3.png");
+	littleBuddyTexture = loadTexture("gfx/littleBuddy.png");
 	currentTexture = playerBoostTexture3;
 
 	memset(app.keyboard, 0, sizeof(int) * MAX_KEYBOARD_KEYS);
@@ -250,6 +265,7 @@ static void resetStage(void)
 	shotgunEnabled = 0;
 	laserEnabled = 0;
 	flameEnabled = 0;
+	littleBuddyEnabled = 0;
 
 	systemsDown = false;
 	playerCrashed = 0;
@@ -353,6 +369,13 @@ static void resetStage(void)
 		free(e);
 	}
 
+	while (stage.littleBuddyPodHead.next)
+	{
+		e = stage.littleBuddyPodHead.next;
+		stage.littleBuddyPodHead.next = e->next;
+		free(e);
+	}
+
 	memset(&stage, 0, sizeof(Stage));
 	stage.fighterTail = &stage.fighterHead;
 	stage.crossHairTail = &stage.crossHairHead;
@@ -365,6 +388,7 @@ static void resetStage(void)
 	stage.flamePodTail = &stage.flamePodHead;
 	stage.spaceBeamPodTail = &stage.spaceBeamPodHead;
 	stage.healthPodTail = &stage.healthPodHead;
+	stage.littleBuddyPodTail = &stage.littleBuddyPodHead;
 }
 
 static void initPlayer()
@@ -408,6 +432,23 @@ static void initCrossHair()
 	SDL_QueryTexture(crossHair->texture, NULL, NULL, &crossHair->w, &crossHair->h);
 }
 
+static void initLittleBuddy()
+{
+	littleBuddy = malloc(sizeof(Entity));
+	memset(littleBuddy, 0, sizeof(Entity));
+	stage.fighterTail->next = littleBuddy;
+	stage.fighterTail = littleBuddy;
+
+	littleBuddy->maxHealth = 1000;
+	littleBuddy->health = littleBuddy->maxHealth;
+	littleBuddy->texture = littleBuddyTexture;
+	SDL_QueryTexture(littleBuddy->texture, NULL, NULL, &littleBuddy->w, &littleBuddy->h);
+
+	littleBuddy->side = SIDE_PLAYER;
+
+	aim_angle = 0.0f;
+}
+
 static void logic(void)
 {
 	updateCamera();
@@ -417,6 +458,20 @@ static void logic(void)
 	doStarfield();
 
 	doPlayer();
+	if (littleBuddy != NULL && !stage.gamePaused)
+	{
+		if (littleBuddyEnabled == 1)
+		{
+			doLittleBuddy();
+		}
+		if (littleBuddy->health <= 0)
+		{
+			littleBuddy->health = 0;
+			playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
+			addExplosions(littleBuddy->x, littleBuddy->y, 32);
+			addDebris(littleBuddy);
+		}
+	}
 
 	doEnemies();
 
@@ -434,6 +489,7 @@ static void logic(void)
 	doFlamePods();
 	doSpaceBeamPods();
 	doHealthPods();
+	doLittleBuddyPods();
 
 	if (stage.gamePaused == false)
 	{
@@ -1141,6 +1197,178 @@ static void fireSpaceBeam(float angle)
 	player->reload = 1; // Adjust reload time for balance
 }
 
+static void doLittleBuddy(void)
+{
+	static float angle = 0.0f;		// Initialize orbit angle
+	const float radius = 100.0f;	// Distance from player
+	const float orbitSpeed = 0.05f; // Speed of orbit
+
+	// Ensure player and little buddy entities are valid
+	if (player == NULL || littleBuddy == NULL)
+	{
+		fprintf(stderr, "Error: player or little buddy entity is not initialized.\n");
+		return;
+	}
+
+	// Calculate orbit position
+	littleBuddy->x = player->x + cos(angle) * radius;
+	littleBuddy->y = player->y + sin(angle) * radius;
+
+	// Update angle for next frame
+	angle += orbitSpeed;
+	if (angle > 2 * M_PI) // Keep angle within bounds
+	{
+		angle -= 2 * M_PI;
+	}
+
+	// Keep little buddy within screen bounds
+	if (littleBuddy->x < 0)
+	{
+		littleBuddy->x = 0;
+	}
+	if (littleBuddy->x > WORLD_WIDTH - littleBuddy->w)
+	{
+		littleBuddy->x = WORLD_WIDTH - littleBuddy->w;
+	}
+	if (littleBuddy->y < 0)
+	{
+		littleBuddy->y = 0;
+	}
+	if (littleBuddy->y > WORLD_HEIGHT - littleBuddy->h)
+	{
+		littleBuddy->y = WORLD_HEIGHT - littleBuddy->h;
+	}
+
+	// Calculate little buddy's aiming angle
+	float littleBuddyAimAngle = aim_angle;
+
+	// Find the closest enemy to the player's aim direction
+	Entity *closestEnemy = NULL;
+	Entity *targetedEnemy = NULL;
+	float closestDistance = FLT_MAX;
+
+	for (Entity *e = stage.fighterHead.next; e != NULL; e = e->next)
+	{
+		if (e != player && e != littleBuddy)
+		{
+			// Calculate vector from player to enemy
+			float dx = e->x + e->w / 2 - (player->x + player->w / 2);
+			float dy = e->y + e->h / 2 - (player->y + player->h / 2);
+			float distance = sqrt(dx * dx + dy * dy);
+
+			// Calculate angle from player to enemy
+			float enemyAngle = atan2(dy, dx);
+
+			// Adjust enemy angle to be within [0, 2*PI)
+			if (enemyAngle < 0)
+			{
+				enemyAngle += 2 * M_PI;
+			}
+
+			// Calculate angular difference between player's aim direction and enemy
+			float angleDiff = fabs(enemyAngle - littleBuddyAimAngle);
+
+			// Normalize angle difference to be within [0, PI)
+			if (angleDiff > M_PI)
+			{
+				angleDiff = 2 * M_PI - angleDiff;
+			}
+
+			// Check if this enemy is within the acceptable angular range
+			// Adjust the angular range as needed (here, approximately 45 degrees)
+			if (angleDiff < M_PI / 4)
+			{
+				// Check if this enemy is the closest so far
+				if (distance < closestDistance)
+				{
+					closestEnemy = e;
+					closestDistance = distance;
+				}
+			}
+		}
+	}
+
+	// If closestEnemy is valid, fire at it
+	if (closestEnemy != NULL && littleBuddy->reload <= 0)
+	{
+		float dx = closestEnemy->x - littleBuddy->x;
+		float dy = closestEnemy->y - littleBuddy->y;
+		littleBuddy->angle = atan2(dy, dx) * (180.0f / M_PI); // Convert to degrees
+
+		// Face opposite direction when shooting
+		littleBuddy->angle += 180.0f; // Adjust angle by 180 degrees
+
+		fireLittleBuddyBullet(littleBuddy, closestEnemy->x, closestEnemy->y); // Function to fire bullets
+		littleBuddy->reload = 7;											  // Reload time
+		playSound(SND_PLAYER_FIRE, CH_ANY);									  // Play firing sound
+
+		// Set targeted enemy for drawing crosshair
+		targetedEnemy = closestEnemy;
+	}
+
+	// Decrease reload time
+	if (littleBuddy->reload > 0)
+	{
+		littleBuddy->reload--;
+	}
+
+	// Render little buddy's crosshair on the targeted enemy
+	if (targetedEnemy != NULL)
+	{
+		// Calculate crosshair position on the targeted enemy
+		SDL_Rect crossHairRect = {
+			targetedEnemy->x + targetedEnemy->w / 2 - crossHair->w / 2 - stage.cameraX,
+			targetedEnemy->y + targetedEnemy->h / 2 - crossHair->h / 2 - stage.cameraY,
+			crossHair->w,
+			crossHair->h};
+
+		// Render the crosshair texture at the updated position
+		SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
+	}
+}
+
+static void fireLittleBuddyBullet(Entity *shooter, float targetX, float targetY)
+{
+	Entity *bullet = malloc(sizeof(Entity));
+	if (!bullet)
+	{
+		fprintf(stderr, "Failed to allocate memory for bullet\n");
+		exit(1); // Handle memory allocation failure gracefully
+	}
+
+	memset(bullet, 0, sizeof(Entity));
+	stage.bulletTail->next = bullet;
+	stage.bulletTail = bullet;
+
+	bullet->texture = bulletTexture;
+	SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
+
+	// Calculate direction
+	float dx = targetX - (shooter->x + shooter->w / 2.0f);
+	float dy = targetY - (shooter->y + shooter->h / 2.0f);
+	float dist = sqrt(dx * dx + dy * dy);
+
+	if (dist != 0)
+	{
+		dx /= dist;
+		dy /= dist;
+	}
+
+	// Calculate firing angle in radians
+	bullet->angle = atan2(dy, dx); // Store firing angle in radians
+
+	// Adjust bullet spawn position based on shooter's center
+	bullet->x = shooter->x + shooter->w / 2.0f - bullet->w / 2.0f;
+	bullet->y = shooter->y + shooter->h / 2.0f - bullet->h / 2.0f;
+
+	// Adjust direction based on angle
+	bullet->dx = dx * PLAYER_BULLET_SPEED;
+	bullet->dy = dy * PLAYER_BULLET_SPEED;
+
+	bullet->health = 1;
+	bullet->side = SIDE_PLAYER;
+}
+
 static void doEnemies(void)
 {
 	Entity *e;
@@ -1148,7 +1376,7 @@ static void doEnemies(void)
 	{
 		for (e = stage.fighterHead.next; e != NULL; e = e->next)
 		{
-			if (e != player) // Ensure the player's position isn't messed with
+			if (e != player && e != littleBuddy) // Ensure the player's position isn't messed with
 			{
 				float dx, dy;
 				float desiredAngle;
@@ -1308,10 +1536,16 @@ static void doFighters(void)
 			if (e == player)
 			{
 				player = NULL;
+				littleBuddy = NULL;
 				Mix_Pause(CH_SHIP_DOWN);
 				Mix_Pause(CH_HYPER_DRIVE);
 				Mix_Pause(CH_PLAYER);
 				Mix_Pause(CH_POINTS);
+			}
+
+			if (e == littleBuddy)
+			{
+				littleBuddy = NULL;
 			}
 
 			if (e == stage.fighterTail)
@@ -1457,6 +1691,10 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 		if (rand() % 30 == 0)
 		{
 			addShotgunPods(e2->x + e2->w / 2, e2->y + e2->h / 2);
+		}
+		if (rand() % 40 == 0 && !littleBuddyEnabled)
+		{
+			addLittleBuddyPods(e2->x + e2->w / 2, e2->y + e2->h / 2);
 		}
 		if (rand() % 100 == 0)
 		{
@@ -1627,7 +1865,7 @@ static int beamHitFighter(Beam *b)
 			if (flameEnabled == 1)
 			{
 				b->health = 1;
-				if (e != player && stage.gamePaused == false)
+				if ((e != player) && (e != littleBuddy) && (stage.gamePaused == false))
 				{
 					// Apply flame damage, but ensure it doesn't go below zero multiple times
 					if (e->health > 0)
@@ -1659,6 +1897,10 @@ static int beamHitFighter(Beam *b)
 								if (rand() % 30 == 0)
 								{
 									addShotgunPods(e->x + e->w / 2, e->y + e->h / 2);
+								}
+								if (rand() % 40 == 0 && !littleBuddyEnabled)
+								{
+									addLittleBuddyPods(e->x + e->w / 2, e->y + e->h / 2);
 								}
 								if (rand() % 100 == 0)
 								{
@@ -1711,6 +1953,10 @@ static int beamHitFighter(Beam *b)
 								if (rand() % 20 == 0)
 								{
 									addShotgunPods(e->x + e->w / 2, e->y + e->h / 2);
+								}
+								if (rand() % 30 == 0 && !littleBuddyEnabled)
+								{
+									addLittleBuddyPods(e->x + e->w / 2, e->y + e->h / 2);
 								}
 								if (rand() % 75 == 0)
 								{
@@ -1765,7 +2011,7 @@ static int bulletHitFighter(Entity *b)
 			if (laserEnabled == 1)
 			{
 				b->health = 1;
-				if (e != player)
+				if (e != player && e != littleBuddy)
 				{
 					if (stage.gamePaused == false)
 					{
@@ -1830,6 +2076,10 @@ static int bulletHitFighter(Entity *b)
 					{
 						addShotgunPods(e->x + e->w / 2, e->y + e->h / 2);
 					}
+					if (rand() % 30 == 0 && !littleBuddyEnabled)
+					{
+						addLittleBuddyPods(e->x + e->w / 2, e->y + e->h / 2);
+					}
 					if (rand() % 75 == 0)
 					{
 						addLaserPods(e->x + e->w / 2, e->y + e->h / 2);
@@ -1845,15 +2095,6 @@ static int bulletHitFighter(Entity *b)
 					stage.score++;
 					Mix_Pause(CH_ALIEN_DIES);
 					playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
-				}
-			}
-
-			if (e == player)
-			{
-				if (stage.gamePaused == false)
-				{
-					// Mix_Pause(CH_SHIP_HIT);
-					// playSound(SND_SHIP_HIT, CH_SHIP_HIT);
 				}
 			}
 
@@ -2032,9 +2273,11 @@ static void doShotgunPods(void)
 				shotgunEnabled = 1;
 				laserEnabled = 0;
 				flameEnabled = 0;
+				spaceBeamEnabled = 0;
 				shotgunStartTime = SDL_GetTicks();
 				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
 				laserDuration = 0;
+				spaceBeamDuration = 0;
 				shotgunDuration = 10;
 
 				playSound(SND_POINTS, CH_POINTS);
@@ -2116,10 +2359,12 @@ static void doLaserPods(void)
 				laserEnabled = 1;
 				shotgunEnabled = 0;
 				flameEnabled = 0;
+				spaceBeamEnabled = 0;
 				laserStartTime = SDL_GetTicks();
 				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
 				shotgunDuration = 0;
 				flameDuration = 0;
+				spaceBeamDuration = 0;
 				laserDuration = 10;
 
 				playSound(SND_POINTS, CH_POINTS);
@@ -2201,10 +2446,12 @@ static void doFlamePods(void)
 				flameEnabled = 1;
 				shotgunEnabled = 0;
 				laserEnabled = 0;
+				spaceBeamEnabled = 0;
 				flameStartTime = SDL_GetTicks();
 				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
 				shotgunDuration = 0;
 				laserDuration = 0;
+				spaceBeamDuration = 0;
 				flameDuration = 10;
 
 				playSound(SND_POINTS, CH_POINTS);
@@ -2370,6 +2617,84 @@ static void doHealthPods(void)
 				if (e == stage.healthPodTail)
 				{
 					stage.healthPodTail = prev;
+				}
+
+				prev->next = e->next;
+				free(e);
+				e = prev;
+			}
+
+			prev = e;
+		}
+	}
+}
+
+static void doLittleBuddyPods(void)
+{
+	Entity *e, *prev;
+
+	if (stage.gamePaused == false)
+	{
+		// Check if shotgun ability should be disabled due to time limit
+		if (littleBuddy != NULL && littleBuddy->health <= 0) // Convert seconds to milliseconds
+		{
+			littleBuddyEnabled = 0;
+			// Optionally perform cleanup or notify the player that laser ability expired
+		}
+
+		prev = &stage.littleBuddyPodHead;
+
+		for (e = stage.littleBuddyPodHead.next; e != NULL; e = e->next)
+		{
+			// Check if entity is out of bounds and adjust direction
+			if (e->x < 0)
+			{
+				e->x = 0;
+				e->dx = -e->dx;
+			}
+
+			if (e->x + e->w > WORLD_WIDTH)
+			{
+				e->x = WORLD_WIDTH - e->w;
+				e->dx = -e->dx;
+			}
+
+			if (e->y < 70)
+			{
+				e->y = 70;
+				e->dy = -e->dy;
+			}
+
+			if (e->y + e->h > WORLD_HEIGHT)
+			{
+				e->y = WORLD_HEIGHT - e->h;
+				e->dy = -e->dy;
+			}
+
+			// Move entity
+			e->x += e->dx;
+			e->y += e->dy;
+
+			// Example collision logic that enables SpaceBeam ability
+			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
+			{
+				e->health = 0;
+
+				littleBuddyEnabled = 1;
+				totalPauseDuration = 0; // Reset total pause duration when ability is enabled
+				if (littleBuddy == NULL)
+				{
+					initLittleBuddy();
+				}
+				playSound(SND_POINTS, CH_POINTS);
+			}
+
+			// Check entity health and remove if necessary
+			if (--e->health <= 0)
+			{
+				if (e == stage.littleBuddyPodTail)
+				{
+					stage.littleBuddyPodTail = prev;
 				}
 
 				prev->next = e->next;
@@ -2571,6 +2896,28 @@ static void addHealthPods(int x, int y)
 	e->y -= e->h / 2;
 }
 
+static void addLittleBuddyPods(int x, int y)
+{
+	Entity *e;
+
+	e = malloc(sizeof(Entity));
+	memset(e, 0, sizeof(Entity));
+	stage.littleBuddyPodTail->next = e;
+	stage.littleBuddyPodTail = e;
+
+	e->x = x;
+	e->y = y;
+	e->dx = -(rand() % 5);
+	e->dy = (rand() % 5) - (rand() % 5);
+	e->health = FPS * 10;
+	e->texture = littleBuddyPodTexture;
+
+	SDL_QueryTexture(e->texture, NULL, NULL, &e->w, &e->h);
+
+	e->x -= e->w / 2;
+	e->y -= e->h / 2;
+}
+
 static void draw(void)
 {
 	drawBackground();
@@ -2582,6 +2929,7 @@ static void draw(void)
 	drawFlamePods();
 	drawSpaceBeamPods();
 	drawHealthPods();
+	drawLittleBuddyPods();
 
 	drawFighters();
 
@@ -2678,6 +3026,19 @@ static void drawHealthPods(void)
 	Entity *e;
 
 	for (e = stage.healthPodHead.next; e != NULL; e = e->next)
+	{
+		if (e->health > (FPS * 2) || e->health % 12 < 6)
+		{
+			blit(e->texture, e->x - stage.cameraX, e->y - stage.cameraY);
+		}
+	}
+}
+
+static void drawLittleBuddyPods(void)
+{
+	Entity *e;
+
+	for (e = stage.littleBuddyPodHead.next; e != NULL; e = e->next)
 	{
 		if (e->health > (FPS * 2) || e->health % 12 < 6)
 		{
@@ -2789,7 +3150,7 @@ static void drawFighters(void)
 			// Find the closest enemy to the player's aim direction
 			for (Entity *e = stage.fighterHead.next; e != NULL; e = e->next)
 			{
-				if (e != player)
+				if (e != player && e != littleBuddy)
 				{
 					// Calculate vector from player to enemy
 					float dx = e->x + e->w / 2 - (player->x + player->w / 2);
@@ -2857,6 +3218,17 @@ static void drawFighters(void)
 			// Render the crosshair texture at the updated position
 			SDL_Rect crossHairRect = {crossHair->x, crossHair->y, crossHair->w, crossHair->h};
 			SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
+		}
+
+		if (littleBuddy != NULL && littleBuddyEnabled == 1)
+		{
+			// Center of rotation (if needed)
+			SDL_Point littleBuddyRotationCenter = {littleBuddy->w / 2, littleBuddy->h / 2};
+
+			// Render the little buddy's texture with rotation
+			SDL_Rect littleBuddyRect = {littleBuddy->x - stage.cameraX, littleBuddy->y - stage.cameraY, littleBuddy->w, littleBuddy->h};
+
+			SDL_RenderCopyEx(app.renderer, littleBuddy->texture, NULL, &littleBuddyRect, littleBuddy->angle, &littleBuddyRotationCenter, SDL_FLIP_NONE);
 		}
 	}
 }
@@ -3124,8 +3496,13 @@ static void drawHud(void)
 			// Draw the timer bar for shotgun ability
 			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
 			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
-			SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, 255); // Blue color for timer bar
+			SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, 255); // White color for timer bar
 			SDL_RenderFillRect(app.renderer, &timerBarRect);
+		}
+
+		else if (littleBuddyEnabled == 1)
+		{
+			// Draw little buddy health bar
 		}
 
 		// Calculate boost availability percentage
@@ -3215,8 +3592,8 @@ static void drawPauseMenu(void)
 	// Check if crosshair is over RESTART option (above QUIT)
 	int restartOptionX = menuX + menuWidth / 2;
 	int restartOptionY = menuY + 220; // Adjust Y position as needed
-	int restartOptionWidth = 200;	 // Adjust width based on your text size
-	int restartOptionHeight = 30;	 // Adjust height based on your text size
+	int restartOptionWidth = 200;	  // Adjust width based on your text size
+	int restartOptionHeight = 30;	  // Adjust height based on your text size
 	SDL_Rect restartOptionRect = {restartOptionX - restartOptionWidth / 2, restartOptionY - restartOptionHeight / 2, restartOptionWidth, restartOptionHeight};
 
 	// Check if crosshair intersects with RESTART option
@@ -3330,6 +3707,10 @@ static void quitGame()
 
 static void restartGame()
 {
+	if (littleBuddy != NULL)
+	{
+		littleBuddy = NULL;
+	}
 	initStage();
 }
 
