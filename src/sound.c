@@ -45,6 +45,10 @@ void playSound(int id, int channel)
 	Mix_PlayChannel(channel, sounds[id], 0);
 }
 
+void playAlarm(int id, int channel){
+	Mix_PlayChannel(channel, sounds[id], 2);
+}
+
 void playBeamSound(int id, int channel, bool loop)
 {
     if (loop) {
@@ -72,12 +76,12 @@ static void loadSounds(void)
 	Mix_VolumeChunk(sounds[SND_PLAYER_FIRE_LASER], 20);
 	Mix_VolumeChunk(sounds[SND_LASER_BEAM], 40);
 	Mix_VolumeChunk(sounds[SND_ALIEN_FIRE], 20);
-	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 128);
+	Mix_VolumeChunk(sounds[SND_PLAYER_DIE], 20);
 	Mix_VolumeChunk(sounds[SND_SHIP_HIT], 20);
 	Mix_VolumeChunk(sounds[SND_ALIEN_DIE], 15);
 	Mix_VolumeChunk(sounds[SND_POINTS], 20);
-	Mix_VolumeChunk(sounds[SND_HYPER_DRIVE], 128);
-	Mix_VolumeChunk(sounds[SND_SHIP_DOWN], 128);
+	Mix_VolumeChunk(sounds[SND_HYPER_DRIVE], 20);
+	Mix_VolumeChunk(sounds[SND_SHIP_DOWN], 77);
 }
 
 void setMusicVolume(int volume)

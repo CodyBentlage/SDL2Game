@@ -48,6 +48,10 @@ static int beamHitFighter(Beam *b);
 static void doEnemies(void);
 static void fireAlienBullet(Entity *e);
 
+static void fireBossShotgun(Entity *boss);
+static void fireBossFlames(Entity *boss);
+static void fireBossSpaceBeams(Entity *boss);
+
 static void clipPlayer(void);
 static void clipCrosshair(void);
 
@@ -108,7 +112,7 @@ static SDL_Texture *alienBulletTexture;
 static SDL_Texture *playerTexture;
 static SDL_Texture *crossHairTexture;
 static SDL_Texture *explosionTexture;
-static SDL_Texture *pointsTexture;
+static SDL_Texture *shotgunTexture;
 static SDL_Texture *laserPodTexture;
 static SDL_Texture *flamePodTexture;
 static SDL_Texture *spaceBeamPodTexture;
@@ -164,11 +168,14 @@ static int prevRightShoulderState;
 
 static bool playerQuit;
 
-static int flameDamage = 0;
+static int flameDamage;
+static int bossFlameDamage;
 
 static int crosshairDistance;
 static bool autoAim;
 static bool playerWantsAutoAim;
+
+static int Boss = 4;
 
 Uint32 pauseStartTime = 0;
 Uint32 totalPauseDuration = 0;
@@ -180,6 +187,7 @@ static int shakeMagnitude = 0;
 static bool bossMessageShown;
 static int bossMessageDuration;
 static int secondBossMessageDuration;
+static bool bossFlamedPlayer = false;
 
 void initStage(void)
 {
@@ -195,7 +203,7 @@ void initStage(void)
 	playerTexture = loadTexture("gfx/player.png");
 	crossHairTexture = loadTexture("gfx/crosshair.png");
 	explosionTexture = loadTexture("gfx/explosion.png");
-	pointsTexture = loadTexture("gfx/shotgun.png");
+	shotgunTexture = loadTexture("gfx/shotgun.png");
 	laserPodTexture = loadTexture("gfx/laserPod.png");
 	flamePodTexture = loadTexture("gfx/flamePod.png");
 	spaceBeamPodTexture = loadTexture("gfx/spaceBeamPod.png");
@@ -248,6 +256,7 @@ void initStage(void)
 	lastPauseTime = 0;
 
 	flameDamage = 0;
+	bossFlameDamage = 0;
 
 	crosshairDistance = 75;
 
@@ -258,6 +267,8 @@ void initStage(void)
 
 	bossMessageShown = false;
 	bossMessageDuration = 0;
+
+	stage.enemyBossSpawned = true;
 }
 
 static void resetStage(void)
@@ -287,6 +298,7 @@ static void resetStage(void)
 	lastPauseTime = 0;
 
 	flameDamage = 0;
+	bossFlameDamage = 0;
 
 	crosshairDistance = 75;
 
@@ -1400,8 +1412,16 @@ static void doLittleBuddy(void)
 		littleBuddy->angle += 180.0f;
 
 		fireLittleBuddyBullet(littleBuddy, closestEnemy->x, closestEnemy->y); // Function to fire bullets
-		littleBuddy->reload = 7;											  // Reload time
-		playSound(SND_PLAYER_FIRE, CH_ANY);									  // Play firing sound
+		if (laserEnabled != 1)
+		{
+			playSound(SND_PLAYER_FIRE, CH_ANY); // Play firing sound
+			littleBuddy->reload = 7;			// Reload time
+		}
+		else
+		{
+			playSound(SND_PLAYER_FIRE_LASER, CH_ANY);
+			littleBuddy->reload = 20; // Reload time
+		}
 	}
 
 	// Decrease reload time
@@ -1424,7 +1444,14 @@ static void fireLittleBuddyBullet(Entity *shooter, float targetX, float targetY)
 	stage.bulletTail->next = bullet;
 	stage.bulletTail = bullet;
 
-	bullet->texture = littleBuddyBulletTexture;
+	if (laserEnabled != 1)
+	{
+		bullet->texture = littleBuddyBulletTexture;
+	}
+	else
+	{
+		bullet->texture = bulletTexture;
+	}
 	SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
 
 	// Calculate direction
@@ -1456,7 +1483,7 @@ static void fireLittleBuddyBullet(Entity *shooter, float targetX, float targetY)
 static void doEnemies(void)
 {
 	Entity *e;
-	if (stage.gamePaused == false)
+	if (!stage.gamePaused && player != NULL)
 	{
 		for (e = stage.fighterHead.next; e != NULL; e = e->next)
 		{
@@ -1496,7 +1523,7 @@ static void doEnemies(void)
 					e->y += dy * ENEMY_SPEED;
 
 					// Set the desired angle to face left
-					desiredAngle = 2 * (M_PI);
+					desiredAngle = 2 * M_PI;
 				}
 
 				// Gradually rotate towards the desired angle
@@ -1548,13 +1575,260 @@ static void doEnemies(void)
 				}
 
 				// Fire bullets
+				if (player != NULL && player->health > 0)
+				{
+					static int flamesTimer = 0;
+					static int spaceBeamsTimer = 0;
+					static int shotgunTimer = 0;
+
+					// Handle space beams
+					if (e->type == Boss)
+					{
+						if (spaceBeamsTimer <= 0)
+						{
+							fireBossSpaceBeams(e);
+							spaceBeamsTimer = 120; // Two-second burst for space beams
+						}
+						else
+						{
+							spaceBeamsTimer--;
+						}
+
+						// Handle flames
+						if (flamesTimer <= 0)
+						{
+							if (rand() % 100 == 0) // Adjust frequency as needed
+							{
+								flamesTimer = 120; // Two-second burst for flames
+							}
+						}
+						else if (flamesTimer > 0)
+						{
+							flameEnabled = 0;
+							fireBossFlames(e);
+							e->reload = 5; // Short reload time for flames in burst
+							flamesTimer--;
+						}
+
+						// Handle shotgun
+						if (shotgunTimer <= 0)
+						{
+							fireBossShotgun(e);
+							e->reload = (rand() % FPS * 2); // Reload time for shotgun
+							shotgunTimer = 60;				// Shotgun fires continuously with a reload interval
+						}
+						else
+						{
+							shotgunTimer--;
+						}
+					}
+				}
 				if (player != NULL && player->health > 0 && --e->reload <= 0)
 				{
-					fireAlienBullet(e);						  // Function to fire bullets
+					fireAlienBullet(e);
 					playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
+					e->reload = (rand() % FPS * 2);
 				}
 			}
 		}
+	}
+}
+
+static void fireBossFlames(Entity *boss)
+{
+	int numFlames = 5;			// Adjust the number of flames for continuous firing
+	int spaceBeamDuration = 30; // Increase duration for a longer-lasting flame
+	float bulletSpeed = ALIEN_BULLET_SPEED;
+	Beam *bossFlames;
+
+	// Ensure the player is valid
+	if (player == NULL || player->health <= 0)
+	{
+		return;
+	}
+
+	// Calculate the angle towards the player
+	float dx = player->x - boss->x;
+	float dy = player->y - boss->y;
+	float angleToPlayer = atan2f(dy, dx);
+
+	// Set the blend mode for the renderer and texture
+	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_ADD);
+	SDL_SetTextureBlendMode(spaceBeamTexture, SDL_BLENDMODE_ADD);
+
+	for (int i = 0; i < numFlames; i++)
+	{
+		bossFlames = malloc(sizeof(Beam));
+		if (!bossFlames)
+		{
+			fprintf(stderr, "Failed to allocate memory for boss spaceBeam\n");
+			exit(1); // Handle memory allocation failure gracefully
+		}
+
+		memset(bossFlames, 0, sizeof(Beam));
+		stage.beamTail->next = bossFlames;
+		stage.beamTail = bossFlames;
+
+		bossFlames->beamTexture = spaceBeamTexture;
+		SDL_QueryTexture(bossFlames->beamTexture, NULL, NULL, &bossFlames->w, &bossFlames->h);
+
+		// Define flame size and duration (burst)
+		bossFlames->w = 200; // Width for a huge space flame
+		bossFlames->h = 20;	 // Height for a huge space flame
+
+		bossFlames->side = SIDE_ALIEN;
+
+		// Apply a small random variation to the angle
+		float spread = 0.1f; // Adjust the spread angle as needed
+		float angle = angleToPlayer + ((float)rand() / RAND_MAX - 0.5f) * 2.0f * spread;
+
+		// Calculate spawn offsets based on firing angle
+		float spawnOffsetX = boss->w / 2.0f * cosf(angle);
+		float spawnOffsetY = boss->h / 2.0f * sinf(angle);
+
+		// Set beam properties
+		bossFlames->x = boss->x + boss->w / 2.0f - bossFlames->w / 2.0f + spawnOffsetX;
+		bossFlames->y = boss->y + boss->h / 2.0f - bossFlames->h / 2.0f + spawnOffsetY;
+		bossFlames->dx = bulletSpeed * cosf(angle);
+		bossFlames->dy = bulletSpeed * sinf(angle);
+		bossFlames->health = spaceBeamDuration; // Each beam lasts for a number of frames
+		bossFlames->side = SIDE_ALIEN;
+		bossFlames->angle = angle; // Store firing angle
+
+		// Color and alpha modulation with randomness for realism
+		bossFlames->r = 255 + (rand() % 56); // Fixed maximum red value for a bright white base
+		bossFlames->g = 255;				 // Fixed maximum green value for a bright white base
+		bossFlames->b = 200 + (rand() % 56); // Blue value with a more prominent blue tint (between 220 and 255)
+		bossFlames->a = 200 + (rand() % 56); // Alpha value between 200 and 255 for transparency variation
+
+		// Set the texture color and alpha modulation
+		SDL_SetTextureColorMod(bossFlames->beamTexture, bossFlames->r, bossFlames->g, bossFlames->b);
+		SDL_SetTextureAlphaMod(bossFlames->beamTexture, bossFlames->a);
+	}
+
+	// Reset the blend mode for the renderer
+	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_NONE);
+}
+
+static void fireBossSpaceBeams(Entity *boss)
+{
+	int numBeams = 5;			// Adjust the number of beams for continuous firing
+	int spaceBeamDuration = 30; // Increase duration for a longer-lasting beam
+	float bulletSpeed = ALIEN_BULLET_SPEED + PLAYER_BULLET_SPEED;
+	Beam *spaceBeam;
+
+	// Ensure the player is valid
+	if (player == NULL || player->health <= 0)
+	{
+		return;
+	}
+
+	// Calculate the angle towards the player
+	float dx = player->x - boss->x;
+	float dy = player->y - boss->y;
+	float angleToPlayer = atan2f(dy, dx);
+
+	// Set the blend mode for the renderer and texture
+	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_ADD);
+	SDL_SetTextureBlendMode(spaceBeamTexture, SDL_BLENDMODE_ADD);
+
+	for (int i = 0; i < numBeams; i++)
+	{
+		spaceBeam = malloc(sizeof(Beam));
+		if (!spaceBeam)
+		{
+			fprintf(stderr, "Failed to allocate memory for boss spaceBeam\n");
+			exit(1); // Handle memory allocation failure gracefully
+		}
+
+		memset(spaceBeam, 0, sizeof(Beam));
+		stage.beamTail->next = spaceBeam;
+		stage.beamTail = spaceBeam;
+
+		spaceBeam->beamTexture = spaceBeamTexture;
+		SDL_QueryTexture(spaceBeam->beamTexture, NULL, NULL, &spaceBeam->w, &spaceBeam->h);
+
+		// Define beam size and duration (burst)
+		spaceBeam->w = 100; // Width for a small space beam
+		spaceBeam->h = 20;	// Height for a small space beam
+
+		spaceBeam->side = SIDE_ALIEN;
+
+		// Calculate a straight firing angle towards the player
+		float angle = angleToPlayer;
+
+		// Calculate spawn offsets based on firing angle
+		float spawnOffsetX = boss->w / 2.0f * cosf(angle);
+		float spawnOffsetY = boss->h / 2.0f * sinf(angle);
+
+		// Set beam properties
+		spaceBeam->x = boss->x + boss->w / 2.0f - spaceBeam->w / 2.0f + spawnOffsetX;
+		spaceBeam->y = boss->y + boss->h / 2.0f - spaceBeam->h / 2.0f + spawnOffsetY;
+		spaceBeam->dx = bulletSpeed * cosf(angle);
+		spaceBeam->dy = bulletSpeed * sinf(angle);
+		spaceBeam->health = spaceBeamDuration; // Each beam lasts for a number of frames
+		spaceBeam->side = SIDE_ALIEN;
+		spaceBeam->angle = angle; // Store firing angle
+
+		// Color and alpha modulation with randomness for realism
+		spaceBeam->r = 255;					// Fixed maximum red value for a bright white base
+		spaceBeam->g = 255;					// Fixed maximum green value for a bright white base
+		spaceBeam->b = 200 + (rand() % 56); // Blue value with a more prominent blue tint (between 220 and 255)
+		spaceBeam->a = 200 + (rand() % 56); // Alpha value between 200 and 255 for transparency variation
+
+		// Set the texture color and alpha modulation
+		SDL_SetTextureColorMod(spaceBeam->beamTexture, spaceBeam->r, spaceBeam->g, spaceBeam->b);
+		SDL_SetTextureAlphaMod(spaceBeam->beamTexture, spaceBeam->a);
+	}
+
+	// Reset the blend mode for the renderer
+	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_NONE);
+}
+
+static void fireBossShotgun(Entity *boss)
+{
+	int i;
+	Entity *bullet;
+	float bulletSpeed = ALIEN_BULLET_SPEED;
+	float spreadAngles[5] = {-0.4f, -0.2f, 0.0f, 0.2f, 0.4f}; // Spread angles for shotgun bullets
+
+	for (i = 0; i < 5; i++)
+	{
+		bullet = malloc(sizeof(Entity));
+		if (!bullet)
+		{
+			fprintf(stderr, "Failed to allocate memory for boss shotgun bullet\n");
+			exit(1); // Handle memory allocation failure gracefully
+		}
+
+		memset(bullet, 0, sizeof(Entity));
+		stage.bulletTail->next = bullet;
+		stage.bulletTail = bullet;
+
+		bullet->texture = alienBulletTexture;
+		SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
+
+		// Calculate spawn position relative to the boss's center
+		float spawnDistance = boss->w / 2.0f + bullet->w / 2.0f; // Distance from boss center to bullet spawn point
+
+		// Calculate spawn offsets based on boss's firing angle and spread
+		float spawnOffsetX = spawnDistance * cosf(boss->angle + M_PI + spreadAngles[i]);
+		float spawnOffsetY = spawnDistance * sinf(boss->angle + M_PI + spreadAngles[i]);
+
+		// Adjust bullet spawn position based on boss's center and spawn offsets
+		bullet->x = boss->x + boss->w / 2.0f - bullet->w / 2.0f + spawnOffsetX;
+		bullet->y = boss->y + boss->h / 2.0f - bullet->h / 2.0f + spawnOffsetY;
+
+		// Set bullet direction based on boss's firing angle and spread
+		bullet->dx = bulletSpeed * cosf(boss->angle + M_PI + spreadAngles[i]);
+		bullet->dy = bulletSpeed * sinf(boss->angle + M_PI + spreadAngles[i]);
+
+		bullet->health = 1;
+		bullet->side = SIDE_ALIEN;
+		bullet->angle = boss->angle + M_PI + spreadAngles[i]; // Store firing angle with spread
+
+		// Move to the next bullet in the linked list
+		stage.bulletTail = bullet;
 	}
 }
 
@@ -1618,6 +1892,12 @@ static void doFighters(void)
 		{
 			if (e == player)
 			{
+				if (bossFlamedPlayer)
+				{
+					playSound(SND_PLAYER_DIE, CH_ALIEN_DIES);
+					addExplosions(e->x, e->y, 32);
+					addDebris(e);
+				}
 				player = NULL;
 				littleBuddy = NULL;
 				Mix_Pause(CH_SHIP_DOWN);
@@ -1688,7 +1968,7 @@ bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player, Entity *littleB
 				{ // If the player has crashed 10 times, there's a 30% change systems go down
 					if ((systemsDown == false) && (player->systemsCooldown <= 0) && (playerCrashed > 10))
 					{
-						playSound(SND_SHIP_DOWN, CH_SHIP_DOWN);
+						playAlarm(SND_SHIP_DOWN, CH_SHIP_DOWN);
 						toggleSystemsDown(true);
 						player->boostCooldown = 300;
 						playerCrashed = 0;
@@ -1809,8 +2089,7 @@ void handleFighterCollision(Entity *e1, Entity *e2)
 	if (e1->health <= 0)
 	{
 		e1->health = 0;
-		Mix_Pause(CH_PLAYER_DIES);
-		playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
+		playSound(SND_PLAYER_DIE, CH_ANY);
 		addExplosions(e1->x, e1->y, 32);
 		addDebris(e1);
 	}
@@ -1948,8 +2227,15 @@ static void doBeams(void)
 			// The beam goes through the enemy and does damage
 		}
 
+		else if (beamHitFighter(b))
+		{
+			// Beam hits player
+		}
+
 		prev = b;
 	}
+
+	prev = b;
 }
 
 static int beamHitFighter(Beam *b)
@@ -1983,8 +2269,7 @@ static int beamHitFighter(Beam *b)
 
 							if (e == player)
 							{
-								Mix_Pause(CH_PLAYER_DIES);
-								playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
+								playSound(SND_PLAYER_DIE, CH_ANY);
 							}
 							else
 							{
@@ -2039,8 +2324,7 @@ static int beamHitFighter(Beam *b)
 
 							if (e == player)
 							{
-								Mix_Pause(CH_PLAYER_DIES);
-								playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
+								playSound(SND_PLAYER_DIE, CH_ANY);
 							}
 							else
 							{
@@ -2086,11 +2370,20 @@ static int beamHitFighter(Beam *b)
 				b->health = 0;
 			}
 
-			if ((e->health > 5) && (flameEnabled != 1) && (spaceBeamEnabled != 1) && (stage.gamePaused == false))
+			if ((e->health >= 0) && (stage.gamePaused == false) && (player != NULL))
 			{
-				e->health -= 5;
+				bossFlameDamage++;
+				if (bossFlameDamage > 20)
+				{
+					bossFlameDamage = 0;
+					e->health -= .000000000001;
+				}
+				if (player->health <= 0)
+				{
+					bossFlamedPlayer = true;
+					player->health = 0;
+				}
 			}
-
 			return 1;
 		}
 	}
@@ -2158,8 +2451,7 @@ static int bulletHitFighter(Entity *b)
 			}
 			else
 			{
-				Mix_Pause(CH_PLAYER_DIES);
-				playSound(SND_PLAYER_DIE, CH_PLAYER_DIES);
+				playSound(SND_PLAYER_DIE, CH_ANY);
 				e->health = 0;
 				addExplosions(e->x, e->y, 32);
 				addDebris(e);
@@ -2894,7 +3186,7 @@ static void addShotgunPods(int x, int y)
 	e->dx = -(rand() % 5);
 	e->dy = (rand() % 5) - (rand() % 5);
 	e->health = FPS * 10;
-	e->texture = pointsTexture;
+	e->texture = shotgunTexture;
 
 	SDL_QueryTexture(e->texture, NULL, NULL, &e->w, &e->h);
 
@@ -3524,6 +3816,30 @@ static void drawHud(void)
 			}
 		}
 
+		if (littleBuddy != NULL && !stage.gamePaused) // Only draw the health bar for littleBuddy
+		{
+			// Calculate health percentage
+			float littleBuddyHealthPercentage = (float)littleBuddy->health / littleBuddy->maxHealth;
+
+			// Calculate width of health bar based on percentage
+			int littleBuddyHealthBarWidth = (int)(littleBuddy->w * littleBuddyHealthPercentage);
+			int initialHealthBarWidth = (int)(littleBuddy->w * (float)50 / littleBuddy->maxHealth);
+
+			// Calculate position below the littleBuddy sprite
+			int littleBuddyHealthBarX = littleBuddy->x - stage.cameraX + (littleBuddy->w - initialHealthBarWidth) / 2; // Center health bar horizontally under the littleBuddy
+			int littleBuddyHealthBarY = littleBuddy->y - stage.cameraY + littleBuddy->h + 5;						   // Adjust vertically below the littleBuddy sprite, e.g., 5 pixels down
+
+			// Draw grey background for health bar
+			SDL_Rect enemyHealthBarBgRect = {littleBuddyHealthBarX, littleBuddyHealthBarY, littleBuddy->w, 4}; // Adjust height and position as needed
+			SDL_SetRenderDrawColor(app.renderer, 40, 40, 40, 255);											   // Dark grey color for background
+			SDL_RenderFillRect(app.renderer, &enemyHealthBarBgRect);
+
+			// Draw health bar based on current health
+			SDL_Rect littleBuddyHealthBarRect = {littleBuddyHealthBarX, littleBuddyHealthBarY, littleBuddyHealthBarWidth, 4}; // Adjust height and position as needed
+			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255);															  // Red color for health bar
+			SDL_RenderFillRect(app.renderer, &littleBuddyHealthBarRect);
+		}
+
 		if (shotgunEnabled == 1)
 		{
 			Uint32 currentTime;
@@ -3917,6 +4233,7 @@ static void toggleSystemsDown(bool activate)
 	{
 		PLAYER_SPEED = 4; // Reset player speed to base speed
 		hyperDriveSoundPlayed = false;
+		Mix_Pause(CH_SHIP_DOWN);
 		systemsDown = false; // Reset boost active flag
 	}
 }
@@ -4067,6 +4384,11 @@ static void drawEnemyBossMessage(int x, int y, int r, int g, int b, char *text)
 			if (!stage.gamePaused)
 			{
 				secondBossMessageDuration--;
+				if (secondBossMessageDuration == 0)
+				{
+					stage.enemyBossSpawned = false;
+					spawnEnemyBoss();
+				}
 			}
 		}
 		if (player != NULL)

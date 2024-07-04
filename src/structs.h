@@ -53,6 +53,7 @@ struct Entity
 	float maxHealth;
 	bool boostActive;
 	int invincibilityFrames;
+	int type;
 	SDL_Texture *texture;
 	Entity *next;
 };
@@ -118,6 +119,7 @@ typedef struct
 	int cameraX;
 	int cameraY;
 	bool gamePaused;
+	bool enemyBossSpawned;
 } Stage;
 
 typedef struct
