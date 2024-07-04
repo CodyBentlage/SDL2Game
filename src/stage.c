@@ -99,6 +99,7 @@ static Entity *crossHair;
 static Entity *littleBuddy;
 static Entity *littleBuddyCrosshair;
 static SDL_Texture *bulletTexture;
+static SDL_Texture *littleBuddyBulletTexture;
 static SDL_Texture *laserTexture;
 static SDL_Texture *flameTexture;
 static SDL_Texture *spaceBeamTexture;
@@ -206,6 +207,7 @@ void initStage(void)
 	playerBoostTexture4 = loadTexture("gfx/playerFlamegif_3.png");
 	littleBuddyTexture = loadTexture("gfx/littleBuddy.png");
 	littleBuddyCrosshairTexture = loadTexture("gfx/littleBuddyCrosshair.png");
+	littleBuddyBulletTexture = loadTexture("gfx/littleBuddyBullet.png");
 	currentTexture = playerBoostTexture3;
 
 	memset(app.keyboard, 0, sizeof(int) * MAX_KEYBOARD_KEYS);
@@ -1422,7 +1424,7 @@ static void fireLittleBuddyBullet(Entity *shooter, float targetX, float targetY)
 	stage.bulletTail->next = bullet;
 	stage.bulletTail = bullet;
 
-	bullet->texture = bulletTexture;
+	bullet->texture = littleBuddyBulletTexture;
 	SDL_QueryTexture(bullet->texture, NULL, NULL, &bullet->w, &bullet->h);
 
 	// Calculate direction
@@ -1644,7 +1646,7 @@ static void doFighters(void)
 			Entity *other;
 			for (other = stage.fighterHead.next; other != NULL; other = other->next)
 			{
-				if (e != other && collisionWithHitbox(e, other, player))
+				if (e != other && collisionWithHitbox(e, other, player, littleBuddy))
 				{
 					handleFighterCollision(e, other);
 				}
@@ -1656,7 +1658,7 @@ static void doFighters(void)
 }
 
 // Function to check collision with hitbox
-bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
+bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player, Entity *littleBuddy)
 {
 	if (stage.gamePaused == false)
 	{
@@ -1676,6 +1678,7 @@ bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
 		{
 			// Determine if e1 is the player
 			bool e1IsPlayer = (e1 == player);
+			bool e2IsLittleBuddy = (e2 == littleBuddy);
 
 			// Handle specific actions based on whether player or NPC collided
 			if (e1IsPlayer)
@@ -1691,6 +1694,19 @@ bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
 						playerCrashed = 0;
 					}
 				}
+			}
+
+			if (e1IsPlayer && e2IsLittleBuddy)
+			{
+				player->health += 25;
+				littleBuddy->health += 25;
+				playerCrashed--;
+			}
+
+			else if (e1 == littleBuddy && e2 == player)
+			{
+				player->health += 25;
+				littleBuddy->health += 25;
 			}
 
 			return true; // Collision detected
@@ -3025,13 +3041,16 @@ static void draw(void)
 		drawCrosshair();
 	}
 
-	if (bossMessageDuration > 0)
+	if (!stage.gamePaused)
 	{
-		drawEnemyBossMessage(SCREEN_WIDTH / 2, (SCREEN_HEIGHT / 2) - 70, 255, 0, 0, "WHO DARES DESTROY MY ARMY");
-	}
-	else if (secondBossMessageDuration > 0)
-	{
-		drawEnemyBossMessage(SCREEN_WIDTH / 2, (SCREEN_HEIGHT / 2) - 70, 255, 0, 0, "LET ME SEE YOU");
+		if (bossMessageDuration > 0)
+		{
+			drawEnemyBossMessage(SCREEN_WIDTH / 2, (SCREEN_HEIGHT / 2) - 70, 255, 0, 0, "WHO DARES DESTROY MY ARMY");
+		}
+		else if (secondBossMessageDuration > 0)
+		{
+			drawEnemyBossMessage(SCREEN_WIDTH / 2, (SCREEN_HEIGHT / 2) - 70, 255, 0, 0, "LET ME SEE YOU");
+		}
 	}
 
 	if (stage.currentEnemyCount > 500 && !bossMessageShown)
@@ -3935,40 +3954,43 @@ void updateCamera()
 
 static void updateScreenShake()
 {
-	if (shakeDuration > 0)
+	if (!stage.gamePaused)
 	{
-		// Calculate new shake offsets
-		int shakeOffsetX = rand() % (2 * shakeMagnitude + 1) - shakeMagnitude;
-		int shakeOffsetY = rand() % (2 * shakeMagnitude + 1) - shakeMagnitude;
-
-		// Apply shake offsets to camera position
-		int shakenCameraX = stage.cameraX + shakeOffsetX;
-		int shakenCameraY = stage.cameraY + shakeOffsetY;
-
-		// Clamp shaken camera position to game world boundaries
-		if (shakenCameraX < 0)
+		if (shakeDuration > 0)
 		{
-			shakenCameraX = 0;
-		}
-		if (shakenCameraY < 0)
-		{
-			shakenCameraY = 0;
-		}
-		if (shakenCameraX > WORLD_WIDTH - SCREEN_WIDTH)
-		{
-			shakenCameraX = WORLD_WIDTH - SCREEN_WIDTH;
-		}
-		if (shakenCameraY > WORLD_HEIGHT - SCREEN_HEIGHT)
-		{
-			shakenCameraY = WORLD_HEIGHT - SCREEN_HEIGHT;
-		}
+			// Calculate new shake offsets
+			int shakeOffsetX = rand() % (2 * shakeMagnitude + 1) - shakeMagnitude;
+			int shakeOffsetY = rand() % (2 * shakeMagnitude + 1) - shakeMagnitude;
 
-		// Update stage.cameraX and stage.cameraY with the clamped shaken values
-		stage.cameraX = shakenCameraX;
-		stage.cameraY = shakenCameraY;
+			// Apply shake offsets to camera position
+			int shakenCameraX = stage.cameraX + shakeOffsetX;
+			int shakenCameraY = stage.cameraY + shakeOffsetY;
 
-		// Decrease shake duration
-		shakeDuration--;
+			// Clamp shaken camera position to game world boundaries
+			if (shakenCameraX < 0)
+			{
+				shakenCameraX = 0;
+			}
+			if (shakenCameraY < 0)
+			{
+				shakenCameraY = 0;
+			}
+			if (shakenCameraX > WORLD_WIDTH - SCREEN_WIDTH)
+			{
+				shakenCameraX = WORLD_WIDTH - SCREEN_WIDTH;
+			}
+			if (shakenCameraY > WORLD_HEIGHT - SCREEN_HEIGHT)
+			{
+				shakenCameraY = WORLD_HEIGHT - SCREEN_HEIGHT;
+			}
+
+			// Update stage.cameraX and stage.cameraY with the clamped shaken values
+			stage.cameraX = shakenCameraX;
+			stage.cameraY = shakenCameraY;
+
+			// Decrease shake duration
+			shakeDuration--;
+		}
 	}
 }
 
@@ -4025,7 +4047,10 @@ static void drawEnemyBossMessage(int x, int y, int r, int g, int b, char *text)
 		bossMessageDuration--; // Decrement the duration each frame
 		if (bossMessageShown == true)
 		{
-			secondBossMessageDuration--;
+			if (!stage.gamePaused)
+			{
+				secondBossMessageDuration--;
+			}
 		}
 		if (player != NULL)
 		{
@@ -4039,7 +4064,10 @@ static void drawEnemyBossMessage(int x, int y, int r, int g, int b, char *text)
 		bossMessageDuration--; // Decrement the duration each frame
 		if (bossMessageShown == true)
 		{
-			secondBossMessageDuration--;
+			if (!stage.gamePaused)
+			{
+				secondBossMessageDuration--;
+			}
 		}
 		if (player != NULL)
 		{
