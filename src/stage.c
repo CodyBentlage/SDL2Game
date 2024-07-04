@@ -256,10 +256,6 @@ void initStage(void)
 
 	bossMessageShown = false;
 	bossMessageDuration = 0;
-
-	initLittleBuddy();
-	initLittleBuddyCrossHair();
-	littleBuddyEnabled = 1;
 }
 
 static void resetStage(void)
@@ -519,9 +515,9 @@ static void logic(void)
 
 	if (stage.gamePaused == false)
 	{
-		// spawnEnemyFighters();
+		spawnEnemyFighters();
 		spawnEnemyMosquitos();
-		// spawnEnemyTheCube();
+		spawnEnemyTheCube();
 	}
 
 	clipPlayer();
