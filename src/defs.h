@@ -54,7 +54,7 @@
 #define BOOST_BAR_WIDTH 170
 #define BOOST_BAR_HEIGHT 5
 
-#define ABILITY_BAR_X 10 // For the shotgun ability
+#define ABILITY_BAR_X 10
 #define ABILITY_BAR_Y 30
 #define ABILITY_BAR_WIDTH 100
 #define ABILITY_BAR_HEIGHT 5

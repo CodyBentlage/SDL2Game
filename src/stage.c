@@ -21,6 +21,7 @@ static void drawEnemyBossMessage(int x, int y, int r, int g, int b, char *text);
 
 static void initPlayer(void);
 static void initCrossHair(void);
+static void initLittleBuddyCrossHair(void);
 static void drawCrosshair(void);
 static void doPlayer(void);
 
@@ -96,6 +97,7 @@ static void toggleSystemsDown(bool activate);
 static Entity *player;
 static Entity *crossHair;
 static Entity *littleBuddy;
+static Entity *littleBuddyCrosshair;
 static SDL_Texture *bulletTexture;
 static SDL_Texture *laserTexture;
 static SDL_Texture *flameTexture;
@@ -117,6 +119,7 @@ static SDL_Texture *playerBoostTexture2;
 static SDL_Texture *playerBoostTexture3;
 static SDL_Texture *playerBoostTexture4;
 static SDL_Texture *littleBuddyTexture;
+static SDL_Texture *littleBuddyCrosshairTexture;
 
 static int aim_x;
 static int aim_y;
@@ -202,6 +205,7 @@ void initStage(void)
 	playerBoostTexture3 = loadTexture("gfx/playerFlamegif_2.png");
 	playerBoostTexture4 = loadTexture("gfx/playerFlamegif_3.png");
 	littleBuddyTexture = loadTexture("gfx/littleBuddy.png");
+	littleBuddyCrosshairTexture = loadTexture("gfx/littleBuddyCrosshair.png");
 	currentTexture = playerBoostTexture3;
 
 	memset(app.keyboard, 0, sizeof(int) * MAX_KEYBOARD_KEYS);
@@ -252,6 +256,10 @@ void initStage(void)
 
 	bossMessageShown = false;
 	bossMessageDuration = 0;
+
+	initLittleBuddy();
+	initLittleBuddyCrossHair();
+	littleBuddyEnabled = 1;
 }
 
 static void resetStage(void)
@@ -432,6 +440,26 @@ static void initCrossHair()
 	SDL_QueryTexture(crossHair->texture, NULL, NULL, &crossHair->w, &crossHair->h);
 }
 
+static void initLittleBuddyCrossHair(void)
+{
+	littleBuddyCrosshair = malloc(sizeof(Entity));
+	if (littleBuddyCrosshair == NULL)
+	{
+		fprintf(stderr, "Failed to allocate memory for crossHair\n");
+		exit(EXIT_FAILURE);
+	}
+	memset(littleBuddyCrosshair, 0, sizeof(Entity));
+
+	littleBuddyCrosshair->w = 100;
+	littleBuddyCrosshair->h = 100;
+
+	stage.crossHairTail->next = littleBuddyCrosshair;
+	stage.crossHairTail = littleBuddyCrosshair;
+
+	littleBuddyCrosshair->texture = littleBuddyCrosshairTexture;
+	SDL_QueryTexture(littleBuddyCrosshair->texture, NULL, NULL, &littleBuddyCrosshair->w, &littleBuddyCrosshair->h);
+}
+
 static void initLittleBuddy()
 {
 	littleBuddy = malloc(sizeof(Entity));
@@ -452,8 +480,6 @@ static void initLittleBuddy()
 static void logic(void)
 {
 	updateCamera();
-
-	doBackground();
 
 	doStarfield();
 
@@ -493,9 +519,9 @@ static void logic(void)
 
 	if (stage.gamePaused == false)
 	{
-		spawnEnemyFighters();
+		// spawnEnemyFighters();
 		spawnEnemyMosquitos();
-		spawnEnemyTheCube();
+		// spawnEnemyTheCube();
 	}
 
 	clipPlayer();
@@ -527,7 +553,7 @@ void doPlayer(void)
 				if (player->systemsTimer <= 0)
 				{
 					toggleSystemsDown(false);	   // Deactivate systems when timer expires
-					player->systemsCooldown = 120; // Set cooldown to 7 seconds (300 frames, assuming 60 frames per second)
+					player->systemsCooldown = 120; // Set cooldown to 2 seconds (120 frames)
 				}
 			}
 			else if (player->systemsCooldown > 0)
@@ -555,7 +581,7 @@ void doPlayer(void)
 				if (player->boostTimer <= 0)
 				{
 					toggleBoost(false);			 // Deactivate boost when timer expires
-					player->boostCooldown = 180; // Set cooldown to 3 seconds (180 frames, assuming 60 frames per second)
+					player->boostCooldown = 180; // Set cooldown to 3 seconds (180 frames)
 				}
 			}
 			else if (player->boostCooldown > 0)
@@ -608,7 +634,7 @@ void doPlayer(void)
 
 				if (player->boostActive)
 				{
-					// Move the player in the direction of the mouse with boosted speed
+					// Move the player in the direction of the right joystick with boosted speed
 					player->dx = cosf(aim_angle) * PLAYER_SPEED;
 					player->dy = sinf(aim_angle) * PLAYER_SPEED;
 				}
@@ -990,12 +1016,12 @@ static void fireLaser(float angle)
 	stage.bulletTail->next = laser;
 	stage.bulletTail = laser;
 
-	laser->texture = laserTexture; // Assuming you have a laser texture
+	laser->texture = laserTexture;
 	SDL_QueryTexture(laser->texture, NULL, NULL, &laser->w, &laser->h);
 
 	// Define laser size and duration (burst)
-	laser->w = 200;			// Example width for a huge space laser
-	laser->h = 20;			// Example height for a huge space laser
+	laser->w = 200;			// Width for a huge space laser
+	laser->h = 20;			// Height for a huge space laser
 	int laserDuration = 10; // Frames the laser will last
 
 	// Calculate spawn position relative to the player's center
@@ -1019,7 +1045,7 @@ static void fireLaser(float angle)
 	laser->y = player->y + player->h / 2.0f - laser->h / 2.0f + spawnOffsetY;
 
 	// Adjust direction based on angle
-	laser->dx = cosf(angle) * LASER_SPEED; // LASER_SPEED should be defined as a constant
+	laser->dx = cosf(angle) * LASER_SPEED;
 	laser->dy = sinf(angle) * LASER_SPEED;
 
 	laser->health = laserDuration; // Laser lasts for a number of frames
@@ -1038,12 +1064,12 @@ static void fireFlame(float angle)
 	int numBeams = 10; // Adjust this for the desired density
 
 	// Calculate the distance between each beam
-	float distanceBetweenBeams = 20.0f; // Adjust as needed
+	float distanceBetweenBeams = 20.0f;
 
 	// Calculate spawn position relative to the player's center
-	float spawnDistance = player->w / 3.0f; // Starting distance from player center
+	float spawnDistance = player->w / 3.0f;
 
-	// Set the blend mode for the renderer and texture
+	// Set the blend mode for the renderer and texture; Making it pretty
 	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_ADD);
 	SDL_SetTextureBlendMode(flameTexture, SDL_BLENDMODE_ADD);
 
@@ -1065,8 +1091,8 @@ static void fireFlame(float angle)
 		SDL_QueryTexture(spaceBeam->beamTexture, NULL, NULL, &spaceBeam->w, &spaceBeam->h);
 
 		// Define beam size and duration (burst)
-		spaceBeam->w = 150; // Example width for a huge space beam
-		spaceBeam->h = 100; // Example height for a huge space beam
+		spaceBeam->w = 150; // Width for a huge space beam
+		spaceBeam->h = 100; // Height for a huge space beam
 
 		// Calculate spawn offsets based on firing angle and current beam index
 		float spawnOffsetX = spawnDistance * cosf(angle) + i * distanceBetweenBeams * cosf(angle);
@@ -1090,7 +1116,7 @@ static void fireFlame(float angle)
 		spaceBeam->side = SIDE_PLAYER;
 		spaceBeam->angle = angle; // Store firing angle
 
-		// Apply color and alpha modulation with randomness for realism
+		// Color and alpha modulation with randomness for realism
 		spaceBeam->r = 200 + (rand() % 56); // Red value between 200 and 255
 		spaceBeam->g = 50 + (rand() % 51);	// Green value between 50 and 100
 		spaceBeam->b = 0;					// Blue value fixed at 0 for a more fiery look
@@ -1103,7 +1129,7 @@ static void fireFlame(float angle)
 		// Update spawnDistance for the next beam
 		spawnDistance += distanceBetweenBeams;
 
-		// Draw the beam immediately like an explosion
+		// Draw the beam
 		blit(spaceBeam->beamTexture, spaceBeam->x - stage.cameraX, spaceBeam->y - stage.cameraY);
 	}
 
@@ -1125,7 +1151,7 @@ static void fireSpaceBeam(float angle)
 	float distanceBetweenBeams = 20.0f; // Adjust as needed
 
 	// Calculate spawn position relative to the player's center
-	float spawnDistance = player->w / 3.0f; // Starting distance from player center
+	float spawnDistance = player->w / 3.0f;
 
 	// Set the blend mode for the renderer and texture
 	SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_ADD);
@@ -1149,8 +1175,8 @@ static void fireSpaceBeam(float angle)
 		SDL_QueryTexture(spaceBeam->beamTexture, NULL, NULL, &spaceBeam->w, &spaceBeam->h);
 
 		// Define beam size and duration (burst)
-		spaceBeam->w = 200; // Example width for a huge space beam
-		spaceBeam->h = 100; // Example height for a huge space beam
+		spaceBeam->w = 200; // Width for a huge space beam
+		spaceBeam->h = 100; // Height for a huge space beam
 
 		// Calculate spawn offsets based on firing angle and current beam index
 		float spawnOffsetX = spawnDistance * cosf(angle) + i * distanceBetweenBeams * cosf(angle);
@@ -1174,7 +1200,7 @@ static void fireSpaceBeam(float angle)
 		spaceBeam->side = SIDE_PLAYER;
 		spaceBeam->angle = angle; // Store firing angle
 
-		// Apply color and alpha modulation with randomness for realism
+		// Color and alpha modulation with randomness for realism
 		spaceBeam->r = 255;					// Fixed maximum red value for a bright white base
 		spaceBeam->g = 255;					// Fixed maximum green value for a bright white base
 		spaceBeam->b = 200 + (rand() % 56); // Blue value with a more prominent blue tint (between 220 and 255)
@@ -1187,7 +1213,7 @@ static void fireSpaceBeam(float angle)
 		// Update spawnDistance for the next beam
 		spawnDistance += distanceBetweenBeams;
 
-		// Draw the beam immediately like an explosion
+		// Draw the beam
 		blit(spaceBeam->beamTexture, spaceBeam->x - stage.cameraX, spaceBeam->y - stage.cameraY);
 	}
 
@@ -1199,9 +1225,13 @@ static void fireSpaceBeam(float angle)
 
 static void doLittleBuddy(void)
 {
-	static float angle = 0.0f;		// Initialize orbit angle
-	const float radius = 100.0f;	// Distance from player
-	const float orbitSpeed = 0.05f; // Speed of orbit
+	const float chaseEnemySpeed = 3.0f; // Speed of chasing the enemy
+	const float stopDistance = 100.0f;	// Distance threshold to stop moving towards enemy
+	const float backupDistance = 50.0f; // Distance threshold to start backing away from enemy
+	const float backupSpeed = 2.0f;		// Speed of backing away from enemy
+	static float angle = 0.0f;			// Initialize orbit angle
+	const float radius = 100.0f;		// Distance from player
+	const float orbitSpeed = 0.05f;		// Speed of orbit
 
 	// Ensure player and little buddy entities are valid
 	if (player == NULL || littleBuddy == NULL)
@@ -1210,42 +1240,10 @@ static void doLittleBuddy(void)
 		return;
 	}
 
-	// Calculate orbit position
-	littleBuddy->x = player->x + cos(angle) * radius;
-	littleBuddy->y = player->y + sin(angle) * radius;
-
-	// Update angle for next frame
-	angle += orbitSpeed;
-	if (angle > 2 * M_PI) // Keep angle within bounds
-	{
-		angle -= 2 * M_PI;
-	}
-
-	// Keep little buddy within screen bounds
-	if (littleBuddy->x < 0)
-	{
-		littleBuddy->x = 0;
-	}
-	if (littleBuddy->x > WORLD_WIDTH - littleBuddy->w)
-	{
-		littleBuddy->x = WORLD_WIDTH - littleBuddy->w;
-	}
-	if (littleBuddy->y < 0)
-	{
-		littleBuddy->y = 0;
-	}
-	if (littleBuddy->y > WORLD_HEIGHT - littleBuddy->h)
-	{
-		littleBuddy->y = WORLD_HEIGHT - littleBuddy->h;
-	}
-
-	// Calculate little buddy's aiming angle
-	float littleBuddyAimAngle = aim_angle;
-
 	// Find the closest enemy to the player's aim direction
 	Entity *closestEnemy = NULL;
-	Entity *targetedEnemy = NULL;
 	float closestDistance = FLT_MAX;
+	float playerAngle = aim_angle; // Capture the player's current aiming angle
 
 	for (Entity *e = stage.fighterHead.next; e != NULL; e = e->next)
 	{
@@ -1266,7 +1264,7 @@ static void doLittleBuddy(void)
 			}
 
 			// Calculate angular difference between player's aim direction and enemy
-			float angleDiff = fabs(enemyAngle - littleBuddyAimAngle);
+			float angleDiff = fabs(enemyAngle - playerAngle);
 
 			// Normalize angle difference to be within [0, PI)
 			if (angleDiff > M_PI)
@@ -1285,7 +1283,112 @@ static void doLittleBuddy(void)
 					closestDistance = distance;
 				}
 			}
+
+			// Check if enemy is within backup distance
+			if (distance < backupDistance)
+			{
+				// Move away from the enemy
+				float backDx = littleBuddy->x - e->x;
+				float backDy = littleBuddy->y - e->y;
+				float backDistance = sqrt(backDx * backDx + backDy * backDy);
+
+				if (backDistance > 0)
+				{
+					littleBuddy->dx = backDx / backDistance * backupSpeed;
+					littleBuddy->dy = backDy / backDistance * backupSpeed;
+				}
+			}
 		}
+	}
+
+	if (closestEnemy != NULL)
+	{
+		// Move towards the closest enemy
+		float dx = closestEnemy->x - littleBuddy->x;
+		float dy = closestEnemy->y - littleBuddy->y;
+		float distance = sqrt(dx * dx + dy * dy);
+
+		// Calculate normalized direction towards the enemy
+		float normalizedDx = dx / distance;
+		float normalizedDy = dy / distance;
+
+		// Check if little buddy is within stopping distance from the enemy
+		if (distance > stopDistance)
+		{
+			// Move towards the enemy
+			littleBuddy->dx = normalizedDx * chaseEnemySpeed;
+			littleBuddy->dy = normalizedDy * chaseEnemySpeed;
+		}
+		else
+		{
+			// Stop moving towards the enemy
+			littleBuddy->dx = 0.0f;
+			littleBuddy->dy = 0.0f;
+		}
+	}
+	else
+	{
+		// Little buddy moves towards player to orbit
+		float orbitCenterX = player->x;
+		float orbitCenterY = player->y;
+
+		// Calculate orbit position
+		float targetX = orbitCenterX + cos(angle) * radius;
+		float targetY = orbitCenterY + sin(angle) * radius;
+
+		// Calculate vector from current position to target position
+		float dx = targetX - littleBuddy->x;
+		float dy = targetY - littleBuddy->y;
+		float distance = sqrt(dx * dx + dy * dy);
+
+		// Check if little buddy is within a small distance to target position
+		if (distance > 2.0f) // Adjust this threshold as needed
+		{
+			// Calculate normalized direction towards target position
+			float normalizedDx = dx / distance;
+			float normalizedDy = dy / distance;
+
+			// Move little buddy towards the target position
+			littleBuddy->dx = normalizedDx * chaseEnemySpeed;
+			littleBuddy->dy = normalizedDy * chaseEnemySpeed;
+		}
+		else
+		{
+			// Stop little buddy if close enough to the target position
+			littleBuddy->dx = 0.0f;
+			littleBuddy->dy = 0.0f;
+
+			// Set exact orbit position
+			littleBuddy->x = targetX;
+			littleBuddy->y = targetY;
+
+			// Update angle for next frame
+			angle += orbitSpeed;
+			if (angle > 2 * M_PI) // Keep angle within bounds
+			{
+				angle -= 2 * M_PI;
+			}
+		}
+	}
+
+	// Boundary checks to keep little buddy within screen bounds relative to the camera
+	float boundaryX = stage.cameraX;
+	float boundaryY = stage.cameraY;
+	if (littleBuddy->x < boundaryX + 70)
+	{
+		littleBuddy->x = boundaryX + 70;
+	}
+	if (littleBuddy->x > boundaryX + SCREEN_WIDTH - littleBuddy->w - 70)
+	{
+		littleBuddy->x = boundaryX + SCREEN_WIDTH - littleBuddy->w - 70;
+	}
+	if (littleBuddy->y < boundaryY + 70)
+	{
+		littleBuddy->y = boundaryY + 70;
+	}
+	if (littleBuddy->y > boundaryY + SCREEN_HEIGHT - littleBuddy->h - 70)
+	{
+		littleBuddy->y = boundaryY + SCREEN_HEIGHT - littleBuddy->h - 70;
 	}
 
 	// If closestEnemy is valid, fire at it
@@ -1295,35 +1398,18 @@ static void doLittleBuddy(void)
 		float dy = closestEnemy->y - littleBuddy->y;
 		littleBuddy->angle = atan2(dy, dx) * (180.0f / M_PI); // Convert to degrees
 
-		// Face opposite direction when shooting
-		littleBuddy->angle += 180.0f; // Adjust angle by 180 degrees
+		// Face correct direction when shooting
+		littleBuddy->angle += 180.0f;
 
 		fireLittleBuddyBullet(littleBuddy, closestEnemy->x, closestEnemy->y); // Function to fire bullets
 		littleBuddy->reload = 7;											  // Reload time
 		playSound(SND_PLAYER_FIRE, CH_ANY);									  // Play firing sound
-
-		// Set targeted enemy for drawing crosshair
-		targetedEnemy = closestEnemy;
 	}
 
 	// Decrease reload time
 	if (littleBuddy->reload > 0)
 	{
 		littleBuddy->reload--;
-	}
-
-	// Render little buddy's crosshair on the targeted enemy
-	if (targetedEnemy != NULL)
-	{
-		// Calculate crosshair position on the targeted enemy
-		SDL_Rect crossHairRect = {
-			targetedEnemy->x + targetedEnemy->w / 2 - crossHair->w / 2 - stage.cameraX,
-			targetedEnemy->y + targetedEnemy->h / 2 - crossHair->h / 2 - stage.cameraY,
-			crossHair->w,
-			crossHair->h};
-
-		// Render the crosshair texture at the updated position
-		SDL_RenderCopy(app.renderer, crossHairTexture, NULL, &crossHairRect);
 	}
 }
 
@@ -1466,7 +1552,7 @@ static void doEnemies(void)
 				// Fire bullets
 				if (player != NULL && player->health > 0 && --e->reload <= 0)
 				{
-					fireAlienBullet(e);						  // Example function to fire bullets
+					fireAlienBullet(e);						  // Function to fire bullets
 					playSound(SND_ALIEN_FIRE, CH_ALIEN_FIRE); // Play firing sound
 				}
 			}
@@ -1493,7 +1579,6 @@ static void fireAlienBullet(Entity *e)
 	bullet->x += (e->w / 2) - (bullet->w / 2);
 	bullet->y += (e->h / 2) - (bullet->h / 2);
 
-	// Calculate the slope
 	calcSlope(player->x + (player->w / 2), player->y + (player->h / 2), e->x, e->y, &bullet->dx, &bullet->dy);
 
 	bullet->dx *= ALIEN_BULLET_SPEED;
@@ -1527,7 +1612,7 @@ static void doFighters(void)
 		}
 
 		if ((e != player && e->x - (stage.cameraX - 500) < -e->w) || (e != player && e->y - (stage.cameraY - 500) < -e->h))
-		{ // If enemy goes out of bounds
+		{ // If enemy goes out of bounds they despawn
 			e->health = 0;
 		}
 
@@ -1596,12 +1681,12 @@ bool collisionWithHitbox(Entity *e1, Entity *e2, Entity *player)
 			// Determine if e1 is the player
 			bool e1IsPlayer = (e1 == player);
 
-			// Handle specific actions based on whether e1 (player or NPC) collided
+			// Handle specific actions based on whether player or NPC collided
 			if (e1IsPlayer)
 			{
 				playerCrashed++;
 				if (rand() % 30 == 0)
-				{
+				{ // If the player has crashed 10 times, there's a 30% change systems go down
 					if ((systemsDown == false) && (player->systemsCooldown <= 0) && (playerCrashed > 10))
 					{
 						playSound(SND_SHIP_DOWN, CH_SHIP_DOWN);
@@ -1759,7 +1844,8 @@ static void doBullets(void)
 			b = prev;
 		}
 		else
-		{ /* The bullet goes through the enemy and does damage */
+		{
+			// The bullet goes through the enemy and does damage
 		}
 
 		if ((flameEnabled == 1) && (b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT))
@@ -1809,7 +1895,7 @@ static void doBeams(void)
 
 	for (b = stage.beamHead.next; b != NULL; b = b->next)
 	{
-		// Update bullet position based on velocity
+		// Update beam position based on velocity
 		if (stage.gamePaused == false)
 		{
 			b->x += b->dx;
@@ -1830,7 +1916,7 @@ static void doBeams(void)
 		}
 		else if ((flameEnabled == 1) && (beamHitFighter(b)))
 		{
-			// The bullet goes through the enemy and does damage
+			// The beam goes through the enemy and does damage
 		}
 
 		if ((spaceBeamEnabled == 1) && (b->x - stage.cameraX > SCREEN_WIDTH || b->y - stage.cameraY > SCREEN_HEIGHT))
@@ -1847,7 +1933,7 @@ static void doBeams(void)
 		}
 		else if ((spaceBeamEnabled == 1) && (beamHitFighter(b)))
 		{
-			// The bullet goes through the enemy and does damage
+			// The beam goes through the enemy and does damage
 		}
 
 		prev = b;
@@ -2229,7 +2315,6 @@ static void doShotgunPods(void)
 		if (shotgunEnabled && (currentTime - shotgunStartTime - totalPauseDuration >= shotgunDuration * 1000)) // Convert seconds to milliseconds
 		{
 			shotgunEnabled = 0;
-			// Optionally perform cleanup or notify the player that shotgun ability expired
 		}
 
 		prev = &stage.shotgunPodHead;
@@ -2265,7 +2350,7 @@ static void doShotgunPods(void)
 			e->x += e->dx;
 			e->y += e->dy;
 
-			// Example collision logic that enables shotgun ability
+			// Collision logic that enables shotgun ability
 			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 			{
 				e->health = 0;
@@ -2311,11 +2396,10 @@ static void doLaserPods(void)
 		// Get current time in milliseconds
 		currentTime = SDL_GetTicks();
 
-		// Check if shotgun ability should be disabled due to time limit
+		// Check if laser ability should be disabled due to time limit
 		if (laserEnabled && (currentTime - laserStartTime - totalPauseDuration >= laserDuration * 1000)) // Convert seconds to milliseconds
 		{
 			laserEnabled = 0;
-			// Optionally perform cleanup or notify the player that laser ability expired
 		}
 
 		prev = &stage.laserPodHead;
@@ -2351,7 +2435,7 @@ static void doLaserPods(void)
 			e->x += e->dx;
 			e->y += e->dy;
 
-			// Example collision logic that enables laser ability
+			// Collision logic that enables laser ability
 			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 			{
 				e->health = 0;
@@ -2398,11 +2482,10 @@ static void doFlamePods(void)
 		// Get current time in milliseconds
 		currentTime = SDL_GetTicks();
 
-		// Check if shotgun ability should be disabled due to time limit
+		// Check if flame ability should be disabled due to time limit
 		if (flameEnabled && (currentTime - flameStartTime - totalPauseDuration >= flameDuration * 1000)) // Convert seconds to milliseconds
 		{
 			flameEnabled = 0;
-			// Optionally perform cleanup or notify the player that laser ability expired
 		}
 
 		prev = &stage.flamePodHead;
@@ -2438,7 +2521,7 @@ static void doFlamePods(void)
 			e->x += e->dx;
 			e->y += e->dy;
 
-			// Example collision logic that enables flame ability
+			// Collision logic that enables flame ability
 			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 			{
 				e->health = 0;
@@ -2485,11 +2568,10 @@ static void doSpaceBeamPods(void)
 		// Get current time in milliseconds
 		currentTime = SDL_GetTicks();
 
-		// Check if shotgun ability should be disabled due to time limit
+		// Check if space beam ability should be disabled due to time limit
 		if (spaceBeamEnabled && (currentTime - spaceBeamStartTime - totalPauseDuration >= spaceBeamDuration * 1000)) // Convert seconds to milliseconds
 		{
 			spaceBeamEnabled = 0;
-			// Optionally perform cleanup or notify the player that laser ability expired
 		}
 
 		prev = &stage.spaceBeamPodHead;
@@ -2525,7 +2607,7 @@ static void doSpaceBeamPods(void)
 			e->x += e->dx;
 			e->y += e->dy;
 
-			// Example collision logic that enables SpaceBeam ability
+			// Collision logic that enables space beam ability
 			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 			{
 				e->health = 0;
@@ -2635,11 +2717,10 @@ static void doLittleBuddyPods(void)
 
 	if (stage.gamePaused == false)
 	{
-		// Check if shotgun ability should be disabled due to time limit
-		if (littleBuddy != NULL && littleBuddy->health <= 0) // Convert seconds to milliseconds
+		// Check if littleBuddy ability should be disabled due to him dying
+		if (littleBuddy != NULL && littleBuddy->health <= 0)
 		{
 			littleBuddyEnabled = 0;
-			// Optionally perform cleanup or notify the player that laser ability expired
 		}
 
 		prev = &stage.littleBuddyPodHead;
@@ -2675,7 +2756,7 @@ static void doLittleBuddyPods(void)
 			e->x += e->dx;
 			e->y += e->dy;
 
-			// Example collision logic that enables SpaceBeam ability
+			// Collision logic that enables SpaceBeam ability
 			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 			{
 				e->health = 0;
@@ -2685,6 +2766,7 @@ static void doLittleBuddyPods(void)
 				if (littleBuddy == NULL)
 				{
 					initLittleBuddy();
+					initLittleBuddyCrossHair();
 				}
 				playSound(SND_POINTS, CH_POINTS);
 			}
@@ -2958,14 +3040,14 @@ static void draw(void)
 
 	if (stage.currentEnemyCount > 500 && !bossMessageShown)
 	{
-		bossMessageDuration = 300; // 300 frames
+		bossMessageDuration = 300; // Display for 300 frames
 		bossMessageShown = true;
 		initiateScreenShake(300, 5); // Shake for 30 frames with magnitude 5
 	}
 	if (bossMessageShown && bossMessageDuration == 1)
 	{
 		initiateScreenShake(300, 5);	 // Shake for 30 frames with magnitude 5
-		secondBossMessageDuration = 300; // 300 frames
+		secondBossMessageDuration = 300; // Display for 300 frames
 	}
 }
 
@@ -3055,7 +3137,7 @@ static void drawFighters(void)
 	{
 		if (e->side == SIDE_ALIEN) // Draw only aliens (not the player)
 		{
-			blitRotated(e->texture, e->x - stage.cameraX, e->y - stage.cameraY, e->angle); // Draw enemies with rotation
+			blitRotated(e->texture, e->x - stage.cameraX, e->y - stage.cameraY, e->angle); // Draw aliens with rotation
 		}
 	}
 
@@ -3064,7 +3146,7 @@ static void drawFighters(void)
 		// Calculate rotation angle in degrees (SDL requires degrees)
 		float rotationAngle = aim_angle * (180.0f / M_PI);
 
-		// Center of rotation (if needed)
+		// Center of rotation
 		SDL_Point rotationCenter = {player->w / 2, player->h / 2};
 
 		// Render the player's texture with rotation
@@ -3221,7 +3303,73 @@ static void drawFighters(void)
 		}
 
 		if (littleBuddy != NULL && littleBuddyEnabled == 1)
-		{
+		{ // Draw littleBuddy and his crosshair
+			if (!autoAim)
+			{
+				Entity *closestEnemy = NULL;
+				float closestDistance = FLT_MAX;
+				float playerAngle = aim_angle; // Capture the player's current aiming angle
+
+				// Find the closest enemy to the player's aim direction
+				for (Entity *e = stage.fighterHead.next; e != NULL; e = e->next)
+				{
+					if (e != player && e != littleBuddy)
+					{
+						// Calculate vector from player to enemy
+						float dx = e->x + e->w / 2 - (player->x + player->w / 2);
+						float dy = e->y + e->h / 2 - (player->y + player->h / 2);
+						float distance = sqrt(dx * dx + dy * dy);
+
+						// Calculate angle from player to enemy
+						float enemyAngle = atan2(dy, dx);
+
+						// Adjust enemy angle to be within [0, 2*PI)
+						if (enemyAngle < 0)
+						{
+							enemyAngle += 2 * M_PI;
+						}
+
+						// Calculate angular difference between player's aim direction and enemy
+						float angleDiff = fabs(enemyAngle - playerAngle);
+
+						// Normalize angle difference to be within [0, PI)
+						if (angleDiff > M_PI)
+						{
+							angleDiff = 2 * M_PI - angleDiff;
+						}
+
+						// Check if this enemy is within the acceptable angular range
+						// Adjust the angular range as needed (here, approximately 45 degrees)
+						if (angleDiff < M_PI / 4)
+						{
+							// Check if this enemy is the closest so far
+							if (distance < closestDistance)
+							{
+								closestEnemy = e;
+								closestDistance = distance;
+							}
+						}
+					}
+				}
+
+				// Adjust the crosshair to target the closest eligible enemy if one is found
+				if (closestEnemy != NULL)
+				{
+					littleBuddyCrosshair->x = closestEnemy->x + closestEnemy->w / 2 - littleBuddyCrosshair->w / 2;
+					littleBuddyCrosshair->y = closestEnemy->y + closestEnemy->h / 2 - littleBuddyCrosshair->h / 2;
+				}
+				else
+				{
+					// If no eligible enemy is found, default to player's aim direction
+					littleBuddyCrosshair->x = littleBuddy->x + (int)(100 * cos(playerAngle)) - littleBuddyCrosshair->w / 2;
+					littleBuddyCrosshair->y = littleBuddy->y + (int)(100 * sin(playerAngle)) - littleBuddyCrosshair->h / 2;
+				}
+
+				// Render the crosshair texture at the updated position
+				SDL_Rect littleBuddyCrosshairRect = {littleBuddyCrosshair->x - stage.cameraX, littleBuddyCrosshair->y - stage.cameraY, littleBuddyCrosshair->w, littleBuddyCrosshair->h};
+				SDL_RenderCopy(app.renderer, littleBuddyCrosshairTexture, NULL, &littleBuddyCrosshairRect);
+			}
+
 			// Center of rotation (if needed)
 			SDL_Point littleBuddyRotationCenter = {littleBuddy->w / 2, littleBuddy->h / 2};
 
@@ -3242,7 +3390,7 @@ static void drawBullets(void)
 		// Calculate rotation angle in degrees (SDL requires degrees)
 		float rotationAngle = b->angle * (180.0f / M_PI);
 
-		// Center of rotation (if needed)
+		// Center of rotation
 		SDL_Point rotationCenter = {b->w / 2, b->h / 2};
 
 		// Render the bullet's texture with rotation
@@ -3260,10 +3408,10 @@ static void drawBeams(void)
 		// Calculate rotation angle in degrees (SDL requires degrees)
 		float rotationAngle = b->angle * (180.0f / M_PI);
 
-		// Center of rotation (if needed)
+		// Center of rotation
 		SDL_Point rotationCenter = {b->w / 2, b->h / 2};
 
-		// Render the bullet's texture with rotation
+		// Render the beam's texture with rotation
 		SDL_Rect beamRect = {(int)b->x - stage.cameraX, (int)b->y - stage.cameraY, b->w, b->h};
 		SDL_RenderCopyEx(app.renderer, b->beamTexture, NULL, &beamRect, rotationAngle, &rotationCenter, SDL_FLIP_NONE);
 	}
@@ -3424,7 +3572,7 @@ static void drawHud(void)
 			else if (remainingTimePercentage > 1)
 				remainingTimePercentage = 1;
 
-			// Draw the timer bar for shotgun ability
+			// Draw the timer bar for laser ability
 			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
 			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
 			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
@@ -3459,7 +3607,7 @@ static void drawHud(void)
 			else if (remainingTimePercentage > 1)
 				remainingTimePercentage = 1;
 
-			// Draw the timer bar for shotgun ability
+			// Draw the timer bar for flame ability
 			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
 			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
 			SDL_SetRenderDrawColor(app.renderer, 0, 0, 255, 255); // Blue color for timer bar
@@ -3493,7 +3641,7 @@ static void drawHud(void)
 			else if (remainingTimePercentage > 1)
 				remainingTimePercentage = 1;
 
-			// Draw the timer bar for shotgun ability
+			// Draw the timer bar for space beam ability
 			int timerBarWidth = (int)(ABILITY_BAR_WIDTH * remainingTimePercentage);
 			SDL_Rect timerBarRect = {ABILITY_BAR_X, ABILITY_BAR_Y, timerBarWidth, ABILITY_BAR_HEIGHT};
 			SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, 255); // White color for timer bar
@@ -3506,7 +3654,7 @@ static void drawHud(void)
 		}
 
 		// Calculate boost availability percentage
-		float boostPercentage = (float)player->boostTimer / 120.0f; // Assuming boost lasts 2 seconds (120 frames)
+		float boostPercentage = (float)player->boostTimer / 120.0f; // The boost lasts 2 seconds (120 frames)
 
 		// Clamp the boost percentage to [0, 1] range
 		if (boostPercentage < 0)
@@ -3544,7 +3692,7 @@ static void drawHud(void)
 				cooldownPercentage = 1.0f - ((float)player->boostCooldown / 180.0f);
 			} // Cooldown is 3 seconds (180 frames)
 			else if (systemsDown == true)
-			{
+			{ // Charging effect for systems coming back online
 				cooldownPercentage = 1.0f - ((float)player->boostCooldown / 300.0f);
 			} // Cooldown is 5 seconds (300 frames)
 			int cooldownBarWidth = (int)(BOOST_BAR_WIDTH * cooldownPercentage);
@@ -3578,8 +3726,8 @@ static void drawPauseMenu(void)
 	// Check if crosshair is over QUIT option
 	int quitOptionX = menuX + menuWidth / 2;
 	int quitOptionY = menuY + 120;
-	int quitOptionWidth = 200; // Adjust width based on your text size
-	int quitOptionHeight = 30; // Adjust height based on your text size
+	int quitOptionWidth = 200;
+	int quitOptionHeight = 30;
 	SDL_Rect quitOptionRect = {quitOptionX - quitOptionWidth / 2, quitOptionY - quitOptionHeight / 2, quitOptionWidth, quitOptionHeight};
 	SDL_Rect crossHairRect = {crossHair->x - stage.cameraX, crossHair->y - stage.cameraY, crossHair->w, crossHair->h};
 
@@ -3589,11 +3737,11 @@ static void drawPauseMenu(void)
 	// Render QUIT option text with hover effect if hovering
 	drawText(menuX + menuWidth / 2, quitOptionY, isHoveringQuit ? 255 : 255, isHoveringQuit ? 0 : 255, isHoveringQuit ? 0 : 255, TEXT_CENTER, "SELECT TO QUIT");
 
-	// Check if crosshair is over RESTART option (above QUIT)
+	// Check if crosshair is over RESTART option
 	int restartOptionX = menuX + menuWidth / 2;
-	int restartOptionY = menuY + 220; // Adjust Y position as needed
-	int restartOptionWidth = 200;	  // Adjust width based on your text size
-	int restartOptionHeight = 30;	  // Adjust height based on your text size
+	int restartOptionY = menuY + 220;
+	int restartOptionWidth = 200;
+	int restartOptionHeight = 30;
 	SDL_Rect restartOptionRect = {restartOptionX - restartOptionWidth / 2, restartOptionY - restartOptionHeight / 2, restartOptionWidth, restartOptionHeight};
 
 	// Check if crosshair intersects with RESTART option
@@ -3605,8 +3753,8 @@ static void drawPauseMenu(void)
 	// Check if crosshair is over AUTO AIM option
 	int autoAimOptionX = menuX + menuWidth / 2;
 	int autoAimOptionY = menuY + 320;
-	int autoAimOptionWidth = 200; // Adjust width based on your text size
-	int autoAimOptionHeight = 30; // Adjust height based on your text size
+	int autoAimOptionWidth = 200;
+	int autoAimOptionHeight = 30;
 	SDL_Rect autoAimOptionRect = {autoAimOptionX - autoAimOptionWidth / 2, autoAimOptionY - autoAimOptionHeight / 2, autoAimOptionWidth, autoAimOptionHeight};
 
 	// Check if crosshair intersects with AUTO AIM option
@@ -3705,6 +3853,7 @@ static void quitGame()
 	handleFighterCollision(player, e);
 }
 
+// Function to restart the game
 static void restartGame()
 {
 	if (littleBuddy != NULL)
@@ -3720,7 +3869,7 @@ static void toggleBoost(bool activate)
 	{
 		if (player->boostCooldown <= 0) // Check if boost is not on cooldown
 		{
-			player->boostTimer = 120;	// Set boost timer to 2 seconds (assuming 60 frames per second)
+			player->boostTimer = 120;	// Set boost timer to 2 seconds (120 frames)
 			PLAYER_SPEED += 7;			// Increment player speed for boost
 			player->boostActive = true; // Set boost active flag
 		}
@@ -3743,7 +3892,7 @@ static void toggleSystemsDown(bool activate)
 	{
 		if (player->systemsCooldown <= 0) // Check if boost is not on cooldown
 		{
-			player->systemsTimer = 300; // Set boost timer to 5 seconds (assuming 60 frames per second)
+			player->systemsTimer = 300; // Set boost timer to 5 seconds (300 frames)
 			player->boostTimer = 0;
 			player->boostActive = false;
 			systemsDown = true; // Set boost active flag

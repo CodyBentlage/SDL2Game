@@ -32,8 +32,6 @@ void initTitle(void)
 
 static void logic(void)
 {
-	doBackground();
-
 	doStarfield();
 
 	if (reveal < SCREEN_HEIGHT)

@@ -84,8 +84,6 @@ void initHighscores(void)
 
 static void logic(void)
 {
-    doBackground();
-
     doStarfield();
 
     if (newHighscore != NULL)
@@ -252,8 +250,6 @@ void addHighscore(int score)
             newHighscore = &highscores.highscore[i];
         }
     }
-
-    // Do not save the highscores here. Wait until name input is finished
 }
 
 static int highscoreComparator(const void *a, const void *b)

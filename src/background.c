@@ -360,14 +360,6 @@ void initStarfield(void)
 	}
 }
 
-void doBackground(void)
-{
-	// if (--backgroundX < -SCREEN_WIDTH)
-	// {
-	//     backgroundX = 0;
-	// }
-}
-
 void doStarfield(void)
 {
 	int i;
@@ -406,13 +398,6 @@ void drawBackground(void)
 	int x = backgroundX - stage.cameraX;
 	int y = backgroundY - stage.cameraY;
 
-	// dest.x = x;
-	// dest.y = y;
-	// dest.w = WORLD_WIDTH;
-	// dest.h = WORLD_HEIGHT;
-
-	// SDL_RenderCopy(app.renderer, backgroundTextures[0], NULL, &dest);
-
 	// Render backgrounds until they cover at least WORLD_WIDTH and WORLD_HEIGHT
 	while (x < WORLD_WIDTH)
 	{
@@ -431,8 +416,4 @@ void drawBackground(void)
 		y = backgroundY - stage.cameraY; // Reset y for the next column
 	}
 	y += SCREEN_HEIGHT;
-
-	// Update backgroundX and backgroundY to control scrolling speed
-	// backgroundX -= 1; // Adjust horizontal scrolling speed
-	// backgroundY -= 1; // Adjust vertical scrolling speed
 }

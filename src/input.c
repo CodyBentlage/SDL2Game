@@ -81,14 +81,14 @@ void doInput(void)
 
 		// Game controller code!!!
 		case SDL_CONTROLLERBUTTONDOWN:
-			if (event.cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) // Adjust this to your correct SDL_CONTROLLER_BUTTON for R1
+			if (event.cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
 			{
 				doButtonDown(&event.jbutton);
 			}
 			break;
 
 		case SDL_CONTROLLERBUTTONUP:
-			if (event.cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) // Adjust this to your correct SDL_CONTROLLER_BUTTON for R1
+			if (event.cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
 			{
 				doButtonUp(&event.jbutton);
 			}
