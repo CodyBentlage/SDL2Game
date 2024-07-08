@@ -160,7 +160,7 @@ void spawnEnemyMosquitos(void)
 
     enemyMosquitoTexture = loadTexture("gfx/enemyMosquito.png");
 
-    if (stage.currentEnemyCount < 550)
+    if (stage.currentEnemyCount < 515)
     {
         if (--enemySpawnTimer <= 0)
         {
