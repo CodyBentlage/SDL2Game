@@ -97,19 +97,19 @@ CMakeFiles/Boomin.dir/src/draw.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/Boomin.dir/src/draw.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.c -o CMakeFiles/Boomin.dir/src/draw.c.s
 
-CMakeFiles/Boomin.dir/src/follow.c.o: CMakeFiles/Boomin.dir/flags.make
-CMakeFiles/Boomin.dir/src/follow.c.o: src/follow.c
-CMakeFiles/Boomin.dir/src/follow.c.o: CMakeFiles/Boomin.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/Boomin.dir/src/follow.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/Boomin.dir/src/follow.c.o -MF CMakeFiles/Boomin.dir/src/follow.c.o.d -o CMakeFiles/Boomin.dir/src/follow.c.o -c /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/follow.c
+CMakeFiles/Boomin.dir/src/enemies.c.o: CMakeFiles/Boomin.dir/flags.make
+CMakeFiles/Boomin.dir/src/enemies.c.o: src/enemies.c
+CMakeFiles/Boomin.dir/src/enemies.c.o: CMakeFiles/Boomin.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/Boomin.dir/src/enemies.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/Boomin.dir/src/enemies.c.o -MF CMakeFiles/Boomin.dir/src/enemies.c.o.d -o CMakeFiles/Boomin.dir/src/enemies.c.o -c /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.c
 
-CMakeFiles/Boomin.dir/src/follow.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/Boomin.dir/src/follow.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/follow.c > CMakeFiles/Boomin.dir/src/follow.c.i
+CMakeFiles/Boomin.dir/src/enemies.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/Boomin.dir/src/enemies.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.c > CMakeFiles/Boomin.dir/src/enemies.c.i
 
-CMakeFiles/Boomin.dir/src/follow.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/Boomin.dir/src/follow.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/follow.c -o CMakeFiles/Boomin.dir/src/follow.c.s
+CMakeFiles/Boomin.dir/src/enemies.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/Boomin.dir/src/enemies.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.c -o CMakeFiles/Boomin.dir/src/enemies.c.s
 
 CMakeFiles/Boomin.dir/src/highscores.c.o: CMakeFiles/Boomin.dir/flags.make
 CMakeFiles/Boomin.dir/src/highscores.c.o: src/highscores.c
@@ -241,7 +241,7 @@ CMakeFiles/Boomin.dir/src/util.c.s: cmake_force
 Boomin_OBJECTS = \
 "CMakeFiles/Boomin.dir/src/background.c.o" \
 "CMakeFiles/Boomin.dir/src/draw.c.o" \
-"CMakeFiles/Boomin.dir/src/follow.c.o" \
+"CMakeFiles/Boomin.dir/src/enemies.c.o" \
 "CMakeFiles/Boomin.dir/src/highscores.c.o" \
 "CMakeFiles/Boomin.dir/src/init.c.o" \
 "CMakeFiles/Boomin.dir/src/input.c.o" \
@@ -257,7 +257,7 @@ Boomin_EXTERNAL_OBJECTS =
 
 Boomin: CMakeFiles/Boomin.dir/src/background.c.o
 Boomin: CMakeFiles/Boomin.dir/src/draw.c.o
-Boomin: CMakeFiles/Boomin.dir/src/follow.c.o
+Boomin: CMakeFiles/Boomin.dir/src/enemies.c.o
 Boomin: CMakeFiles/Boomin.dir/src/highscores.c.o
 Boomin: CMakeFiles/Boomin.dir/src/init.c.o
 Boomin: CMakeFiles/Boomin.dir/src/input.c.o
@@ -268,6 +268,8 @@ Boomin: CMakeFiles/Boomin.dir/src/text.c.o
 Boomin: CMakeFiles/Boomin.dir/src/title.c.o
 Boomin: CMakeFiles/Boomin.dir/src/util.c.o
 Boomin: CMakeFiles/Boomin.dir/build.make
+Boomin: /usr/lib/x86_64-linux-gnu/libgif.so
+Boomin: /usr/lib/x86_64-linux-gnu/libgif.so
 Boomin: CMakeFiles/Boomin.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Linking C executable Boomin"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Boomin.dir/link.txt --verbose=$(VERBOSE)

@@ -10,7 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.c" "CMakeFiles/Boomin.dir/src/background.c.o" "gcc" "CMakeFiles/Boomin.dir/src/background.c.o.d"
   "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/draw.c" "CMakeFiles/Boomin.dir/src/draw.c.o" "gcc" "CMakeFiles/Boomin.dir/src/draw.c.o.d"
-  "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/follow.c" "CMakeFiles/Boomin.dir/src/follow.c.o" "gcc" "CMakeFiles/Boomin.dir/src/follow.c.o.d"
+  "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.c" "CMakeFiles/Boomin.dir/src/enemies.c.o" "gcc" "CMakeFiles/Boomin.dir/src/enemies.c.o.d"
   "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/highscores.c" "CMakeFiles/Boomin.dir/src/highscores.c.o" "gcc" "CMakeFiles/Boomin.dir/src/highscores.c.o.d"
   "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/init.c" "CMakeFiles/Boomin.dir/src/init.c.o" "gcc" "CMakeFiles/Boomin.dir/src/init.c.o.d"
   "/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/input.c" "CMakeFiles/Boomin.dir/src/input.c.o" "gcc" "CMakeFiles/Boomin.dir/src/input.c.o.d"

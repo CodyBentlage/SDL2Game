@@ -177,29 +177,29 @@ src/draw.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/draw.c.s
 .PHONY : src/draw.c.s
 
-src/follow.o: src/follow.c.o
-.PHONY : src/follow.o
+src/enemies.o: src/enemies.c.o
+.PHONY : src/enemies.o
 
 # target to build an object file
-src/follow.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/follow.c.o
-.PHONY : src/follow.c.o
+src/enemies.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/enemies.c.o
+.PHONY : src/enemies.c.o
 
-src/follow.i: src/follow.c.i
-.PHONY : src/follow.i
+src/enemies.i: src/enemies.c.i
+.PHONY : src/enemies.i
 
 # target to preprocess a source file
-src/follow.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/follow.c.i
-.PHONY : src/follow.c.i
+src/enemies.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/enemies.c.i
+.PHONY : src/enemies.c.i
 
-src/follow.s: src/follow.c.s
-.PHONY : src/follow.s
+src/enemies.s: src/enemies.c.s
+.PHONY : src/enemies.s
 
 # target to generate assembly for a file
-src/follow.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/follow.c.s
-.PHONY : src/follow.c.s
+src/enemies.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Boomin.dir/build.make CMakeFiles/Boomin.dir/src/enemies.c.s
+.PHONY : src/enemies.c.s
 
 src/highscores.o: src/highscores.c.o
 .PHONY : src/highscores.o
@@ -432,9 +432,9 @@ help:
 	@echo "... src/draw.o"
 	@echo "... src/draw.i"
 	@echo "... src/draw.s"
-	@echo "... src/follow.o"
-	@echo "... src/follow.i"
-	@echo "... src/follow.s"
+	@echo "... src/enemies.o"
+	@echo "... src/enemies.i"
+	@echo "... src/enemies.s"
 	@echo "... src/highscores.o"
 	@echo "... src/highscores.i"
 	@echo "... src/highscores.s"

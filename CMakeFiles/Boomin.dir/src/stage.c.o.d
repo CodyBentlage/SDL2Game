@@ -72,15 +72,16 @@ CMakeFiles/Boomin.dir/src/stage.c.o: \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
  /usr/include/SDL2/SDL_error.h /usr/include/SDL2/SDL_rwops.h \
  /usr/include/SDL2/SDL_sensor.h /usr/include/SDL2/SDL_joystick.h \
+ /usr/include/SDL2/SDL_mixer.h /usr/include/SDL2/SDL_audio.h \
+ /usr/include/SDL2/SDL_endian.h /usr/include/SDL2/SDL_mutex.h \
+ /usr/include/SDL2/SDL_thread.h /usr/include/SDL2/SDL_atomic.h \
+ /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/SDL_version.h \
  /usr/include/time.h /usr/include/x86_64-linux-gnu/bits/time.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/defs.h \
  /usr/include/SDL2/SDL.h /usr/include/SDL2/SDL_main.h \
- /usr/include/SDL2/SDL_assert.h /usr/include/SDL2/SDL_atomic.h \
- /usr/include/SDL2/SDL_platform.h /usr/include/SDL2/SDL_audio.h \
- /usr/include/SDL2/SDL_endian.h /usr/include/SDL2/SDL_mutex.h \
- /usr/include/SDL2/SDL_thread.h /usr/include/SDL2/SDL_clipboard.h \
+ /usr/include/SDL2/SDL_assert.h /usr/include/SDL2/SDL_clipboard.h \
  /usr/include/SDL2/SDL_cpuinfo.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/immintrin.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/x86gprintrin.h \
@@ -179,8 +180,8 @@ CMakeFiles/Boomin.dir/src/stage.c.o: \
  /usr/include/SDL2/SDL_messagebox.h /usr/include/SDL2/SDL_metal.h \
  /usr/include/SDL2/SDL_power.h /usr/include/SDL2/SDL_render.h \
  /usr/include/SDL2/SDL_shape.h /usr/include/SDL2/SDL_system.h \
- /usr/include/SDL2/SDL_timer.h /usr/include/SDL2/SDL_version.h \
- /usr/include/SDL2/SDL_locale.h /usr/include/SDL2/SDL_misc.h \
+ /usr/include/SDL2/SDL_timer.h /usr/include/SDL2/SDL_locale.h \
+ /usr/include/SDL2/SDL_misc.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/structs.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/background.h \
@@ -189,4 +190,5 @@ CMakeFiles/Boomin.dir/src/stage.c.o: \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/sound.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/stage.h \
  /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/text.h \
- /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/util.h
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/util.h \
+ /home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/src/enemies.h

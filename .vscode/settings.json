@@ -4,6 +4,12 @@
         "text.h": "c",
         "title.h": "c",
         "math.h": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "enemies.h": "c",
+        "stage.h": "c",
+        "sound.h": "c",
+        "common.h": "c",
+        "util.h": "c",
+        "numbers": "c"
     }
 }

@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/usr/include/SDL2
 
-C_FLAGS = -Wall -Wempty-body -Werror -Wstrict-prototypes -Werror=maybe-uninitialized -Warray-bounds -g
+C_FLAGS = -g -Wall -Wempty-body -Werror -Wstrict-prototypes -Werror=maybe-uninitialized -Warray-bounds -g
 
