@@ -284,7 +284,6 @@ void initStage(void)
 	bossFlamedPlayer = false;
 
 	stage.enemyBossSpawned = true;
-	stage.currentEnemyCount = 550;
 }
 
 static void resetStage(void)
