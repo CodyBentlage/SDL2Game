@@ -4334,7 +4334,7 @@ static void toggleSystemsDown(bool activate)
 	{
 		PLAYER_SPEED = 4; // Reset player speed to base speed
 		hyperDriveSoundPlayed = false;
-		Mix_Pause(CH_SHIP_DOWN);
+		Mix_HaltChannel(CH_SHIP_DOWN);
 		systemsDown = false; // Reset boost active flag
 	}
 }
