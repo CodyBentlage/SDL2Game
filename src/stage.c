@@ -284,6 +284,7 @@ void initStage(void)
 	bossFlamedPlayer = false;
 
 	stage.enemyBossSpawned = true;
+	stage.currentEnemyCount = 550;
 }
 
 static void resetStage(void)
@@ -735,6 +736,7 @@ void doPlayer(void)
 						Mix_Pause(CH_ALIEN_FIRE);
 						Mix_Pause(CH_POINTS);
 						Mix_Pause(CH_SHIP_DOWN);
+						Mix_Pause(CH_BOSS_FIRE_LASER);
 					}
 					else if (stage.gamePaused == false)
 					{
@@ -882,6 +884,7 @@ void doPlayer(void)
 						Mix_Pause(CH_ALIEN_FIRE);
 						Mix_Pause(CH_POINTS);
 						Mix_Pause(CH_SHIP_DOWN);
+						Mix_Pause(CH_BOSS_FIRE_LASER);
 					}
 					else if (stage.gamePaused == false)
 					{
@@ -2339,7 +2342,14 @@ static int beamHitFighter(Beam *b)
 										addSpaceBeamPods(e->x + e->w / 2, e->y + e->h / 2);
 									}
 								}
-								stage.score++;
+								if (e->type != Boss)
+								{
+									stage.score++;
+								}
+								else
+								{
+									stage.score += 50;
+								}
 								Mix_Pause(CH_ALIEN_DIES);
 								playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 							}
@@ -2404,7 +2414,14 @@ static int beamHitFighter(Beam *b)
 										addSpaceBeamPods(e->x + e->w / 2, e->y + e->h / 2);
 									}
 								}
-								stage.score++;
+								if (e->type != Boss)
+								{
+									stage.score++;
+								}
+								else
+								{
+									stage.score += 50;
+								}
 								Mix_Pause(CH_ALIEN_DIES);
 								playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 							}
@@ -2544,7 +2561,14 @@ static int bulletHitFighter(Entity *b)
 							addSpaceBeamPods(e->x + e->w / 2, e->y + e->h / 2);
 						}
 					}
-					stage.score++;
+					if (e->type != Boss)
+					{
+						stage.score++;
+					}
+					else
+					{
+						stage.score += 50;
+					}
 					Mix_Pause(CH_ALIEN_DIES);
 					playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 				}
@@ -3054,8 +3078,14 @@ static void doHealthPods(void)
 			if (player != NULL && collision(e->x, e->y, e->w, e->h, player->x, player->y, player->w, player->h))
 			{
 				e->health = 0; // Delete the health pod
-				player->health += 200;
-
+				if (player->health < player->maxHealth)
+				{
+					player->health += 200;
+					if (player->health > player->maxHealth)
+					{
+						player->health = player->maxHealth;
+					}
+				}
 				playSound(SND_POINTS, CH_POINTS);
 			}
 
@@ -4250,6 +4280,15 @@ static void quitGame()
 // Function to restart the game
 static void restartGame()
 {
+	Mix_Pause(CH_HYPER_DRIVE);
+	Mix_Pause(CH_ANY);
+	Mix_Pause(CH_PLAYER);
+	Mix_Pause(CH_PLAYER_FIRE_LASER);
+	Mix_Pause(CH_ALIEN_FIRE);
+	Mix_Pause(CH_POINTS);
+	Mix_Pause(CH_SHIP_DOWN);
+	Mix_Pause(CH_BOSS_FIRE_LASER);
+
 	if (littleBuddy != NULL)
 	{
 		littleBuddy = NULL;
@@ -4470,6 +4509,7 @@ static void initiateScreenShake(int duration, int magnitude)
 
 static void YouWin()
 {
+	playSound(SND_ALIEN_DIE, CH_ALIEN_DIES);
 	player = NULL;
 	Mix_Pause(CH_SHIP_DOWN);
 	Mix_Pause(CH_HYPER_DRIVE);
