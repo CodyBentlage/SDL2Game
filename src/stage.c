@@ -1528,7 +1528,14 @@ static void doEnemies(void)
 					e->y += dy * ENEMY_SPEED;
 
 					// Calculate the desired angle towards the player
-					desiredAngle = atan2(dy, dx) + M_PI;
+					if (e->type != Boss)
+					{
+						desiredAngle = atan2(dy, dx) + M_PI;
+					}
+					else
+					{
+						desiredAngle = atan2(dy, dx);
+					}
 				}
 				else
 				{
@@ -1789,23 +1796,21 @@ static void fireBossLaserBeams(Entity *boss)
 	// Calculate spawn position relative to the boss's center
 	float spawnDistance = boss->w / 3.0f + laser->w / 3.0f; // Distance from boss center to laser spawn point
 
-	float adjustedAngle = boss->angle + M_PI;
-
 	// Calculate spawn offsets based on boss's adjusted firing angle
-	float spawnOffsetX = spawnDistance * cosf(adjustedAngle);
-	float spawnOffsetY = spawnDistance * sinf(adjustedAngle);
+	float spawnOffsetX = spawnDistance * cosf(boss->angle);
+	float spawnOffsetY = spawnDistance * sinf(boss->angle);
 
 	// Adjust laser spawn position based on boss's center and spawn offsets
 	laser->x = boss->x + boss->w / 2.0f - laser->w / 2.0f + spawnOffsetX;
 	laser->y = boss->y + boss->h / 2.0f - laser->h / 2.0f + spawnOffsetY;
 
 	// Adjust direction based on adjusted angle
-	laser->dx = cosf(adjustedAngle) * LASER_SPEED;
-	laser->dy = sinf(adjustedAngle) * LASER_SPEED;
+	laser->dx = cosf(boss->angle) * LASER_SPEED;
+	laser->dy = sinf(boss->angle) * LASER_SPEED;
 
 	laser->health = laserDuration; // Laser lasts for a number of frames
 	laser->side = SIDE_ALIEN;
-	laser->angle = adjustedAngle; // Store firing angle
+	laser->angle = boss->angle; // Store firing angle
 
 	boss->reload = 60; // Adjust reload time for balance, higher for a big burst laser
 }
@@ -1837,20 +1842,20 @@ static void fireBossShotgun(Entity *boss)
 		float spawnDistance = boss->w / 2.0f + bullet->w / 2.0f; // Distance from boss center to bullet spawn point
 
 		// Calculate spawn offsets based on boss's firing angle and spread
-		float spawnOffsetX = spawnDistance * cosf(boss->angle + M_PI + spreadAngles[i]);
-		float spawnOffsetY = spawnDistance * sinf(boss->angle + M_PI + spreadAngles[i]);
+		float spawnOffsetX = spawnDistance * cosf(boss->angle + spreadAngles[i]);
+		float spawnOffsetY = spawnDistance * sinf(boss->angle + spreadAngles[i]);
 
 		// Adjust bullet spawn position based on boss's center and spawn offsets
 		bullet->x = boss->x + boss->w / 2.0f - bullet->w / 2.0f + spawnOffsetX;
 		bullet->y = boss->y + boss->h / 2.0f - bullet->h / 2.0f + spawnOffsetY;
 
 		// Set bullet direction based on boss's firing angle and spread
-		bullet->dx = bulletSpeed * cosf(boss->angle + M_PI + spreadAngles[i]);
-		bullet->dy = bulletSpeed * sinf(boss->angle + M_PI + spreadAngles[i]);
+		bullet->dx = bulletSpeed * cosf(boss->angle + spreadAngles[i]);
+		bullet->dy = bulletSpeed * sinf(boss->angle + spreadAngles[i]);
 
 		bullet->health = 1;
 		bullet->side = SIDE_ALIEN;
-		bullet->angle = boss->angle + M_PI + spreadAngles[i]; // Store firing angle with spread
+		bullet->angle = boss->angle + spreadAngles[i]; // Store firing angle with spread
 
 		// Move to the next bullet in the linked list
 		stage.bulletTail = bullet;

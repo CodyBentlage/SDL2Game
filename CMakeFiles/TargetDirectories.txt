@@ -1,3 +1,0 @@
-/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles/Boomin.dir
-/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles/edit_cache.dir
-/home/toasty/Documents/C++Projects/PassionProjects/SDL2Game/CMakeFiles/rebuild_cache.dir
